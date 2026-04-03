@@ -1,0 +1,16 @@
+# Временные файлы Windows
+Thumbs.db
+Desktop.ini
+
+# Настройки редактора
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Логи ошибок
+*.log
+
+node_modules/

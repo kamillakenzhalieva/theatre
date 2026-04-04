@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="afisha-container">
+    <div class="page-header">
+        <h1 class="page-title">Дни Рождения</h1>
+        <p class="page-subtitle">Устройте незабываемый праздник в стенах нашего театра</p>
+    </div>
+
+    <div class="events-grid">
+        {% for item in packages %}
+        <div class="event-card">
+            <div class="event-image" style="background-color: #e8f5e9; display: flex; align-items: center; justify-content: center; font-size: 50px;">
+                🎂
+                <div class="event-price">{{ item.price }} ₽</div>
+            </div>
+
+            <div class="event-info">
+                <div>
+                    <h2 class="event-title">{{ item.title }}</h2>
+                    <p class="event-description">{{ item.description }}</p>
+                    <ul style="color: #666; margin-bottom: 20px; padding-left: 20px;">
+                        {% for feature in item.features %}
+                        <li>{{ feature }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="event-footer">
+                    <a href="{% url 'about' %}" class="btn-buy">Забронировать дату</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

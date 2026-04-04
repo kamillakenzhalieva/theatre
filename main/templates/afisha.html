@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="afisha-container">
+    <div class="page-header">
+        <h1 class="page-title">Афиша</h1>
+        <p class="page-subtitle">Выбирайте лучшие спектакли и праздники для всей семьи</p>
+    </div>
+
+    <div class="events-grid">
+        
+        {% for event in events %}
+        <div class="event-card">
+            {% if event.image %}
+            <div class="event-image" style="background-image: url('{{ event.image.url }}');">
+                <div class="event-price">от {{ event.price }} ₽</div>
+            </div>
+            {% else %}
+            <div class="event-image" style="background-color: #eee;">
+                <div class="event-price">от {{ event.price }} ₽</div>
+            </div>
+            {% endif %}
+
+            <div class="event-info">
+                <div class="event-meta">
+                    <span class="event-date">📅 {{ event.date|date:"d E, H:i" }}</span>
+                    <span class="event-location">📍 {{ event.location }}</span>
+                </div>
+                
+                <h2 class="event-title">{{ event.title }}</h2>
+                <p class="event-description">{{ event.description }}</p>
+                
+                <div class="event-footer">
+                    {% if event.ticket_link %}
+                        <a href="{{ event.ticket_link }}" class="btn-buy" target="_blank">Купить билет</a>
+                    {% else %}
+                        <span class="btn-buy disabled">Билеты скоро</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-events">
+            <h3>Пока нет запланированных спектаклей</h3>
+            <p>Загляните к нам чуть позже!</p>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}

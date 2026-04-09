@@ -2,6 +2,8 @@ from django.shortcuts import render
 from .models import Event
 from .forms import ApplicationForm
 from .models import Tariff
+from .models import Application
+from django.shortcuts import redirect
 
 def index(request):
     return render(request, 'index.html')
@@ -57,4 +59,33 @@ def spectacles_view(request):
     return render(request, 'spectacles.html', {'events': events})
 
 def application_view(request):
-    return render(request, 'application.html')
+    if request.method == 'POST':
+        full_name = request.POST.get('full_name')
+        phone = request.POST.get('phone')
+        email = request.POST.get('email')
+        category = request.POST.get('category')  
+        age_range = request.POST.get('age_range')
+        selection = request.POST.get('selection') 
+        address = request.POST.get('address')
+        event_date = request.POST.get('event_date')
+        event_time = request.POST.get('event_time')
+        comment = request.POST.get('comment')
+        
+        full_comment = f"Услуга: {selection}. Возраст: {age_range}. Время: {event_time}. \nКомментарий: {comment}"
+
+        Application.objects.create(
+            category='birthday' if category == 'День Рождения' else 'graduation' if category == 'Выпускной' else 'spectacle',
+            full_name=full_name, 
+            phone=phone,
+            email=email,
+            age=5, 
+            address=address,
+            event_date_time=f"{event_date} 12:00", 
+            comment=full_comment
+        )
+        return redirect('home') 
+    return redirect('home')
+
+def graduation_view(request):
+    tariffs = Tariff.objects.filter(service__category='graduation')
+    return render(request, 'graduation.html', {'tariffs': tariffs})

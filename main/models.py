@@ -55,7 +55,7 @@ class Application(models.Model):
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20)
     email = models.EmailField()
-    age = models.IntegerField(verbose_name="Возраст участников")
+    age = models.CharField(max_length=50, verbose_name="Возраст детей")
     address = models.CharField(max_length=500)
     event_date_time = models.DateTimeField()
     tariff = models.ForeignKey(Tariff, on_delete=models.CASCADE, verbose_name="Выбранный тариф")

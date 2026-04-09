@@ -23,7 +23,7 @@
                         <h2 class="event-title">{{ event.title }}</h2>
                         <p class="event-description">{{ event.description }}</p>
                     </div>
-                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
+                    <button class="btn-buy" onclick="openModal('Спектакль')">Заказать спектакль</button>
                 </div>
             </div>
         {% empty %}
@@ -40,7 +40,7 @@
                         <h2 class="event-title">Три поросенка</h2>
                         <p class="event-description">Интерактивная сказка, где дети участвуют в строительстве домиков и помогают героям. Идеально для садиков и праздников.</p>
                     </div>
-                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
+                    <button class="btn-buy" onclick="openModal('Спектакль')">Заказать спектакль</button>
                 </div>
             </div>
 

@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from .models import Event
+from .forms import ApplicationForm
+from .models import Tariff
 
 def index(request):
     return render(request, 'index.html')
@@ -44,3 +46,15 @@ def birthdays(request):
         }
     ]
     return render(request, 'birthdays.html', {'packages': mock_packages})
+
+def birthday_page(request):
+    form = ApplicationForm()
+    form.fields['tariff'].queryset = Tariff.objects.filter(service__category='birthday')    
+    return render(request, 'birthdays.html', {'form': form})
+
+def spectacles_view(request):
+    events = Event.objects.all()
+    return render(request, 'spectacles.html', {'events': events})
+
+def application_view(request):
+    return render(request, 'application.html')

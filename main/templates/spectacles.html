@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="afisha-container">
+    <div class="page-header">
+        <h1 class="page-title">Наши спектакли</h1>
+        <p class="page-subtitle">Выбирайте спектакль, и мы организуем его для вас!</p>
+    </div>
+
+    <div class="events-grid">
+        {% for event in events %}
+            <div class="event-card">
+                <div class="event-image" style="background-image: url('{{ event.image.url|default:"" }}'); background-color: #f0f0f0;">
+                    <div class="event-price">от {{ event.price|default:"800" }} ₽</div>
+                </div>
+                <div class="event-info">
+                    <div>
+                        <div class="event-meta">
+                            <span>🎭 Спектакль для детей</span>
+                            <span>📍 Любая локация</span>
+                        </div>
+                        <h2 class="event-title">{{ event.title }}</h2>
+                        <p class="event-description">{{ event.description }}</p>
+                    </div>
+                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
+                </div>
+            </div>
+        {% empty %}
+            <div class="event-card">
+                <div class="event-image" style="background-color: #f0f0f0;">
+                    <div class="event-price">от 800 ₽</div>
+                </div>
+                <div class="event-info">
+                    <div>
+                        <div class="event-meta">
+                            <span>🎭 Спектакль для детей</span>
+                            <span>📍 Любая локация</span>
+                        </div>
+                        <h2 class="event-title">Три поросенка</h2>
+                        <p class="event-description">Интерактивная сказка, где дети участвуют в строительстве домиков и помогают героям. Идеально для садиков и праздников.</p>
+                    </div>
+                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
+                </div>
+            </div>
+
+            <div class="event-card">
+                <div class="event-image" style="background-color: #f0f0f0;">
+                    <div class="event-price">от 1000 ₽</div>
+                </div>
+                <div class="event-info">
+                    <div>
+                        <div class="event-meta">
+                            <span>🎭 Музыкальная сказка</span>
+                            <span>📍 Любая локация</span>
+                        </div>
+                        <h2 class="event-title">Тайна старого шкафа</h2>
+                        <p class="event-description">Волшебная история о дружбе и храбрости. Зрителей ждут световые эффекты, музыкальные номера и настоящие чудеса.</p>
+                    </div>
+                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

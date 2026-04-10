@@ -2,65 +2,72 @@
 {% load static %}
 
 {% block content %}
-<div class="afisha-container">
-    <div class="page-header">
-        <h1 class="page-title">Наши спектакли</h1>
-        <p class="page-subtitle">Выбирайте спектакль, и мы организуем его для вас!</p>
+<div class="spectacles-container">
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1 style="font-size: 48px; margin-bottom: 10px;">Наши спектакли</h1>
+        <p style="color: #888;">Выбирайте спектакль, и мы организуем его для вас!</p>
     </div>
 
-    <div class="events-grid">
-        {% for event in events %}
-            <div class="event-card">
-                <div class="event-image" style="background-image: url('{{ event.image.url|default:"" }}'); background-color: #f0f0f0;">
-                    <div class="event-price">от {{ event.price|default:"800" }} ₽</div>
-                </div>
-                <div class="event-info">
-                    <div>
-                        <div class="event-meta">
-                            <span>🎭 Спектакль для детей</span>
-                            <span>📍 Любая локация</span>
-                        </div>
-                        <h2 class="event-title">{{ event.title }}</h2>
-                        <p class="event-description">{{ event.description }}</p>
-                    </div>
-                    <button class="btn-buy" onclick="openModal('Спектакль')">Заказать спектакль</button>
-                </div>
+    {% for event in events %}
+    <div class="event-card">
+        <div class="event-image-side">
+            {% if event.image %}
+                <img src="{{ event.image.url }}" class="event-img">
+            {% endif %}
+            <div class="price-tag">от {{ event.price }} ₽</div>
+        </div>
+        
+        <div class="event-content-side">
+            <div class="event-meta">
+                <span>📅 {{ event.date|date:"d.m в H:i" }}</span>
+                <span>📍 {{ event.location }}</span>
             </div>
-        {% empty %}
-            <div class="event-card">
-                <div class="event-image" style="background-color: #f0f0f0;">
-                    <div class="event-price">от 800 ₽</div>
-                </div>
-                <div class="event-info">
-                    <div>
-                        <div class="event-meta">
-                            <span>🎭 Спектакль для детей</span>
-                            <span>📍 Любая локация</span>
-                        </div>
-                        <h2 class="event-title">Три поросенка</h2>
-                        <p class="event-description">Интерактивная сказка, где дети участвуют в строительстве домиков и помогают героям. Идеально для садиков и праздников.</p>
-                    </div>
-                    <button class="btn-buy" onclick="openModal('Спектакль')">Заказать спектакль</button>
-                </div>
+            <h2 class="event-title">{{ event.title }}</h2>
+            <p class="event-text">{{ event.short_description|default:event.description|truncatewords:30 }}</p>
+            
+            <div class="button-group">
+                <button class="btn-more" onclick="openEventModal('{{ event.title|escapejs }}', '{{ event.description|escapejs }}', '{% if event.image %}{{ event.image.url }}{% endif %}', '{{ event.price }}', '{{ event.date|date:"d.m.Y в H:i" }}', '{{ event.location|escapejs }}')">
+                    Узнать подробнее
+                </button>
+                <button class="btn-buy" onclick="openFinalForm('{{ event.title|escapejs }}')">Заказать</button>
             </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
 
-            <div class="event-card">
-                <div class="event-image" style="background-color: #f0f0f0;">
-                    <div class="event-price">от 1000 ₽</div>
-                </div>
-                <div class="event-info">
-                    <div>
-                        <div class="event-meta">
-                            <span>🎭 Музыкальная сказка</span>
-                            <span>📍 Любая локация</span>
-                        </div>
-                        <h2 class="event-title">Тайна старого шкафа</h2>
-                        <p class="event-description">Волшебная история о дружбе и храбрости. Зрителей ждут световые эффекты, музыкальные номера и настоящие чудеса.</p>
-                    </div>
-                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать спектакль</a>
-                </div>
-            </div>
-        {% endfor %}
+<div id="eventModal" class="modal-overlay" onclick="closeEventModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div style="flex: 1; background: #f0f0f0;">
+            <img id="modalImg" src="" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <div style="flex: 1.2; padding: 40px; overflow-y: auto; position: relative;">
+            <span onclick="closeEventModal()" style="position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer;">&times;</span>
+            <h2 id="modalTitle" style="font-size: 28px; margin-top: 0;"></h2>
+            <div id="modalMeta" style="margin: 20px 0; color: #2ec4b6; font-weight: bold;"></div>
+            <div id="modalDesc" style="line-height: 1.8; color: #444; margin-bottom: 30px;"></div>
+            <button class="btn-buy" id="modalOrderBtn" style="width: 100%; padding: 15px;">ЗАКАЗАТЬ СПЕКТАКЛЬ</button>
+        </div>
     </div>
 </div>
+
+<script>
+function openEventModal(title, desc, img, price, date, loc) {
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalDesc').innerHTML = desc.replace(/\n/g, '<br>');
+    document.getElementById('modalImg').src = img;
+    document.getElementById('modalMeta').innerHTML = "📅 " + date + " | 📍 " + loc + "<br>💰 Цена: " + price + " ₽";
+    
+    document.getElementById('modalOrderBtn').onclick = function() {
+        closeEventModal();
+        openFinalForm(title);
+    };
+
+    document.getElementById('eventModal').style.display = 'flex';
+}
+
+function closeEventModal(e) {
+    document.getElementById('eventModal').style.display = 'none';
+}
+</script>
 {% endblock %}

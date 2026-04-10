@@ -5,6 +5,153 @@
     <meta charset="UTF-8">
     <title>Театр Новый Стиль</title>
     <style>
+        .spectacles-container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .event-card {
+            display: flex;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            min-height: 350px;
+        }
+        .event-image-side {
+            flex: 1;
+            position: relative;
+            min-width: 400px;
+        }
+        .event-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .price-tag {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .event-content-side {
+            flex: 1.5;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .event-meta {
+            display: flex;
+            gap: 20px;
+            color: #2ec4b6;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .event-title {
+            font-size: 32px;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+        }
+        .event-text {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-box {
+            background: white;
+            width: 90%;
+            max-width: 900px;
+            border-radius: 25px;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            max-height: 90vh;
+        }
+        
+        .contacts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .contact-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .contact-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .contact-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .contact-card h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .contact-card p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .map-container {
+            margin-top: 50px;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+            height: 450px;
+            width: 100%;
+            border: 2px solid #fff;
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .modal-overlay {
+            backdrop-filter: blur(5px); 
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
         body { 
             margin: 0; 
             font-family: Arial, sans-serif; 
@@ -128,6 +275,31 @@
             transform: scale(1.03);
             box-shadow: 0 6px 20px rgba(168, 230, 207, 0.6);
         }
+
+        .btn-more {
+            display: inline-block;
+            text-decoration: none;
+            background: #f0f0f0; 
+            color: #333;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        .btn-more:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .event-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
         .btn-buy.disabled {
             background: #e0e0e0;
             color: #888;

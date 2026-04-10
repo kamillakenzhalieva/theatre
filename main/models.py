@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth.models import User
 
 class HomePage(models.Model):
     welcome_text = models.CharField(max_length=255)
@@ -10,16 +9,23 @@ class HomePage(models.Model):
         return "Контент главной страницы"
 
 class Event(models.Model):
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    date = models.DateTimeField()
-    location = models.CharField(max_length=255)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='events/', blank=True, null=True)
-    is_active = models.BooleanField(default=True)
+    title = models.CharField(max_length=200, verbose_name="Название спектакля")
+    
+    short_description = models.CharField(max_length=300, blank=True, verbose_name="Краткое описание (для афиши)")
+   
+    description = models.TextField(verbose_name="Полное описание спектакля")
+    date = models.DateTimeField(verbose_name="Дата и время начала")
+    location = models.CharField(max_length=255, verbose_name="Локация (зал/адрес)")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена билета")
+    image = models.ImageField(upload_to='events/', blank=True, null=True, verbose_name="Картинка/Постер")
+    is_active = models.BooleanField(default=True, verbose_name="Отображать на сайте")
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        verbose_name = "Спектакль/Мероприятие"
+        verbose_name_plural = "Спектакли и мероприятия"
 
 class Service(models.Model):
     CATEGORY_CHOICES = [
@@ -51,7 +57,6 @@ class Application(models.Model):
         ('spectacle', 'Спектакль'),
     ]
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    
     full_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20)
     email = models.EmailField()

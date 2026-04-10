@@ -1,9 +1,7 @@
-from django.shortcuts import render
-from .models import Event
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Event, Tariff, Application
 from .forms import ApplicationForm
-from .models import Tariff
-from .models import Application
-from django.shortcuts import redirect
+from django.utils import timezone
 
 def index(request):
     return render(request, 'index.html')
@@ -11,52 +9,30 @@ def index(request):
 def about(request):
     return render(request, 'about.html')
 
-def afisha(request):
-    mock_events = [
-        {
-            'title': 'Три поросенка',
-            'date': '12 апреля, 12:00',
-            'location': 'Большой зал',
-            'description': 'Классическая сказка в интерактивном формате. Малыши помогут строить домики и спасаться от волка!',
-            'price': '800',
-            'ticket_link': '#'
-        },
-        {
-            'title': 'Тайна старого шкафа',
-            'date': '19 апреля, 16:00',
-            'location': 'Камерная сцена',
-            'description': 'Волшебная история о дружбе и храбрости. Зрителей ждут световые эффекты и чудеса.',
-            'price': '1200',
-            'ticket_link': '#'
-        }
-    ]
-    return render(request, 'afisha.html', {'events': mock_events})
-
-def birthdays(request):
-    mock_packages = [
-        {
-            'title': 'Пакет «Стандарт»',
-            'description': 'Аренда зала на 2 часа, интерактивная сказка, поздравление от героя и чаепитие.',
-            'price': '15 000',
-            'features': ['До 10 детей', '1 аниматор', 'Базовый декор']
-        },
-        {
-            'title': 'Пакет «Премиум»',
-            'description': 'Аренда на 3 часа, расширенный спектакль, шоу мыльных пузырей и тематическая фотозона.',
-            'price': '25 000',
-            'features': ['До 20 детей', '2 аниматора', 'Шоу-программа']
-        }
-    ]
-    return render(request, 'birthdays.html', {'packages': mock_packages})
-
-def birthday_page(request):
-    form = ApplicationForm()
-    form.fields['tariff'].queryset = Tariff.objects.filter(service__category='birthday')    
-    return render(request, 'birthdays.html', {'form': form})
 
 def spectacles_view(request):
-    events = Event.objects.all()
+    events = Event.objects.filter(is_active=True).order_by('date')
     return render(request, 'spectacles.html', {'events': events})
+
+
+def event_detail(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    return render(request, 'event_detail.html', {'event': event})
+
+
+def birthday_page(request):
+    tariffs = Tariff.objects.filter(service__category='birthday')
+    form = ApplicationForm()
+    
+    if 'tariff' in form.fields:
+        form.fields['tariff'].queryset = tariffs
+    return render(request, 'birthdays.html', {'form': form, 'tariffs': tariffs})
+
+
+def graduation_view(request):
+    tariffs = Tariff.objects.filter(service__category='graduation')
+    return render(request, 'graduation.html', {'tariffs': tariffs})
+
 
 def application_view(request):
     if request.method == 'POST':
@@ -71,21 +47,34 @@ def application_view(request):
         event_time = request.POST.get('event_time')
         comment = request.POST.get('comment')
         
-        full_comment = f"Услуга: {selection}. Возраст: {age_range}. Время: {event_time}. \nКомментарий: {comment}"
+       
+        cat_map = {
+            'День Рождения': 'birthday',
+            'Выпускной': 'graduation',
+            'Спектакль': 'spectacle'
+        }
+        db_category = cat_map.get(category, 'spectacle')
 
+        
+        if event_date:
+            dt_string = f"{event_date} {event_time if event_time else '00:00'}"
+        else:
+            dt_string = timezone.now() 
+
+     
         Application.objects.create(
-            category='birthday' if category == 'День Рождения' else 'graduation' if category == 'Выпускной' else 'spectacle',
+            category=db_category,
             full_name=full_name, 
             phone=phone,
             email=email,
-            age=5, 
-            address=address,
-            event_date_time=f"{event_date} 12:00", 
-            comment=full_comment
+            age=age_range if age_range else "Не указан", 
+            address=address if address else "В театре",
+            event_date_time=dt_string,
+            
         )
         return redirect('home') 
     return redirect('home')
 
-def graduation_view(request):
-    tariffs = Tariff.objects.filter(service__category='graduation')
-    return render(request, 'graduation.html', {'tariffs': tariffs})
+def afisha(request):
+    events = Event.objects.all()
+    return render(request, 'afisha.html', {'events': events})

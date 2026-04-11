@@ -19,7 +19,6 @@
             <div class="event-info">
                 <div>
                     <h2 class="event-title">{{ item.title }}</h2>
-                    <p class="event-description">{{ item.description }}</p>
                     <ul style="color: #666; margin-bottom: 20px; padding-left: 20px;">
                         {% for feature in item.features %}
                         <li>{{ feature }}</li>
@@ -32,6 +31,8 @@
                 </div>
             </div>
         </div>
+        {% empty %}
+        <p>Тарифы пока не добавлены.</p>
         {% endfor %}
     </div>
 </div>

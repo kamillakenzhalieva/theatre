@@ -9,19 +9,20 @@
     </div>
 
     <div class="events-grid">
-        {% for tariff in tariffs %}
+        {% for item in packages %}
             <div class="event-card">
-                <div class="event-image" style="background-image: url('{{ tariff.image.url|default:"" }}'); background-color: #f0f0f0;">
-                    <div class="event-price">от {{ tariff.price }} ₽</div>
+                <div class="event-image" style="background-color: #e3f2fd; display: flex; align-items: center; justify-content: center; font-size: 50px;">
+                    🎓
+                    <div class="event-price">от {{ item.price }} ₽</div>
                 </div>
                 <div class="event-info">
                     <div>
-                        <div class="event-meta">
-                            <span>🎓 Выпускной</span>
-                            <span>📍 В театре или школе</span>
-                        </div>
-                        <h2 class="event-title">{{ tariff.name }}</h2>
-                        <p class="event-description">{{ tariff.description }}</p>
+                        <h2 class="event-title">{{ item.title }}</h2>
+                        <ul style="color: #666; margin-bottom: 20px; padding-left: 20px;">
+                            {% for feature in item.features %}
+                                <li>{{ feature }}</li>
+                            {% endfor %}
+                        </ul>
                     </div>
                     <button class="btn-buy" data-bs-toggle="modal" data-bs-target="#orderModal" onclick="setCategory('Выпускной')">
                         Заказать выпускной
@@ -29,39 +30,7 @@
                 </div>
             </div>
         {% empty %}
-            <div class="event-card">
-                <div class="event-image" style="background-color: #fff4e6;">
-                    <div class="event-price">от 1500 ₽/чел</div>
-                </div>
-                <div class="event-info">
-                    <div>
-                        <div class="event-meta">
-                            <span>🎓 Младшая школа и сады</span>
-                            <span>✨ Интерактив + Шоу</span>
-                        </div>
-                        <h2 class="event-title">Пакет «Большое приключение»</h2>
-                        <p class="event-description">Театрализованная программа с любимыми героями, бумажная дискотека и торжественное вручение дипломов под фанфары.</p>
-                    </div>
-                    <button class="btn-buy" onclick="openModal('Выпускной')">Заказать выпускной</button>
-                </div>
-            </div>
-
-            <div class="event-card">
-                <div class="event-image" style="background-color: #e3f2fd;">
-                    <div class="event-price">от 2500 ₽/чел</div>
-                </div>
-                <div class="event-info">
-                    <div>
-                        <div class="event-meta">
-                            <span>🎓 Старшие классы</span>
-                            <span>🎧 Вечеринка + Банкет</span>
-                        </div>
-                        <h2 class="event-title">Пакет «Новый Стиль: Drive»</h2>
-                        <p class="event-description">Современный формат: медиа-квиз, профессиональный DJ, кавер-группа и стильная фотозона. Прощаемся со школой в ритме города!</p>
-                    </div>
-                    <a href="{% url 'application_page' %}" class="btn-buy">Заказать выпускной</a>
-                </div>
-            </div>
+            <p>Программы для выпускных скоро появятся.</p>
         {% endfor %}
     </div>
 </div>

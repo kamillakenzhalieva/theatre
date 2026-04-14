@@ -1,13 +1,22 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Event, Tariff, Application
-from .forms import ApplicationForm
 from django.utils import timezone
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from .models import HomePage, Event, Service, Tariff, Application
+from .serializers import (
+    HomePageSerializer, EventSerializer, ServiceSerializer, 
+    TariffSerializer, ApplicationSerializer
+)
 
 def index(request):
     return render(request, 'index.html')
 
 def about(request):
     return render(request, 'about.html')
+
+def afisha(request):
+    events = Event.objects.all()
+    return render(request, 'afisha.html', {'events': events})
 
 def spectacles_view(request):
     events = Event.objects.filter(is_active=True).order_by('date')
@@ -19,63 +28,66 @@ def event_detail(request, pk):
 
 def birthday_page(request):
     tariffs = Tariff.objects.filter(category='birthday')
-    packages = []
-    for tariff in tariffs:
-        packages.append({
-            'title': tariff.name,
-            'price': tariff.price,
-            'features': [f.strip() for f in tariff.features_list.split('\n') if f.strip()],
-        })
-    form = ApplicationForm()
-    if 'tariff' in form.fields:
-        form.fields['tariff'].queryset = tariffs
-    return render(request, 'birthdays.html', {'form': form, 'packages': packages})
+    packages = [{
+        'title': t.name,
+        'price': t.price,
+        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
+    } for t in tariffs]
+    return render(request, 'birthdays.html', {'packages': packages})
 
 def graduation_view(request):
     tariffs = Tariff.objects.filter(category='graduation')
-    packages = []
-    for tariff in tariffs:
-        packages.append({
-            'title': tariff.name,
-            'price': tariff.price,
-            'features': [f.strip() for f in tariff.features_list.split('\n') if f.strip()],
-        })
+    packages = [{
+        'title': t.name,
+        'price': t.price,
+        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
+    } for t in tariffs]
     return render(request, 'graduation.html', {'packages': packages})
 
-def application_view(request):
-    if request.method == 'POST':
-        full_name = request.POST.get('full_name')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        category = request.POST.get('category')
-        age_range = request.POST.get('age_range')
-        address = request.POST.get('address')
-        event_date = request.POST.get('event_date')
-        event_time = request.POST.get('event_time')
-        tariff_id = request.POST.get('tariff')
 
+
+
+class HomePageViewSet(viewsets.ModelViewSet):
+    queryset = HomePage.objects.all()
+    serializer_class = HomePageSerializer
+
+class EventViewSet(viewsets.ModelViewSet):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+
+class ServiceViewSet(viewsets.ModelViewSet):
+    queryset = Service.objects.all()
+    serializer_class = ServiceSerializer
+
+class TariffViewSet(viewsets.ModelViewSet):
+    queryset = Tariff.objects.all()
+    serializer_class = TariffSerializer
+
+class ApplicationViewSet(viewsets.ModelViewSet):
+    queryset = Application.objects.all()
+    serializer_class = ApplicationSerializer
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        
         cat_map = {
             'День Рождения': 'birthday',
             'Выпускной': 'graduation',
             'Спектакль': 'spectacle'
         }
-        db_category = cat_map.get(category, 'spectacle')
+        
+        if data.get('category') in cat_map:
+            data['category'] = cat_map[data.get('category')]
 
-        dt_string = f"{event_date} {event_time or '00:00'}" if event_date else timezone.now()
+        if 'selection' in data and not data.get('tariff'):
+            tariff = Tariff.objects.filter(name=data.get('selection')).first()
+            if tariff:
+                data['tariff'] = tariff.id
 
-        Application.objects.create(
-            category=db_category,
-            full_name=full_name,
-            phone=phone,
-            email=email,
-            age=age_range or "Не указан",
-            address=address or "В театре",
-            event_date_time=dt_string,
-            tariff_id=tariff_id
-        )
-        return redirect('home')
-    return redirect('home')
-
-def afisha(request):
-    events = Event.objects.all()
-    return render(request, 'afisha.html', {'events': events})
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        if request.accepted_renderer.format == 'html':
+            return redirect('home')
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

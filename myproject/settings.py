@@ -15,7 +15,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'main', 
+    'rest_framework',
+    'main',
 ]
 
 MIDDLEWARE = [
@@ -52,7 +53,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'theatre_db',
         'USER': 'postgres',
-        'PASSWORD': '123',
+        'PASSWORD': '1111',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }

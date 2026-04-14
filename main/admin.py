@@ -11,8 +11,8 @@ class TariffAdmin(admin.ModelAdmin):
 
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'category', 'event_date_time', 'tariff')
-    list_filter = ('category', 'event_date_time')
+    list_display = ('full_name', 'category', 'event_date', 'event_time', 'tariff')
+    list_filter = ('category', 'event_date', 'tariff')
 
 admin.site.register(HomePage)
-# admin.site.register(Service)
+#admin.site.register(Service)

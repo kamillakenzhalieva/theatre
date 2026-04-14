@@ -57,7 +57,8 @@ class Application(models.Model):
     email = models.EmailField()
     age = models.CharField(max_length=50, verbose_name="Возраст детей")
     address = models.CharField(max_length=500)
-    event_date_time = models.DateTimeField()
+    event_date = models.DateField(verbose_name="Дата события", null=True, blank=True)
+    event_time = models.TimeField(verbose_name="Время события", null=True, blank=True)
     tariff = models.ForeignKey(Tariff, on_delete=models.CASCADE, verbose_name="Выбранный тариф")
     created_at = models.DateTimeField(auto_now_add=True)
 

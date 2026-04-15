@@ -1,12 +1,19 @@
 from django.db import models
 
 class HomePage(models.Model):
-    welcome_text = models.CharField(max_length=255)
-    subtitle = models.TextField()
-    banner_image = models.ImageField(upload_to='home/', blank=True, null=True)
+    welcome_text = models.CharField(max_length=255, verbose_name="Заголовок приветствия")
+    subtitle = models.TextField(verbose_name="Подзаголовок/Описание")
+    banner_image = models.ImageField(upload_to='home/', blank=True, null=True, verbose_name="Главный баннер")
+    
+    phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
+    email = models.EmailField(blank=True, verbose_name="Email для связи")
+    address = models.CharField(max_length=500, blank=True, verbose_name="Адрес театра")
 
     def __str__(self):
-        return "Контент главной страницы"
+        return "Настройки главной страницы и контактов"
+
+    class Meta:
+        verbose_name = "Главная страница и контакты"
 
 class Event(models.Model):
     title = models.CharField(max_length=200, verbose_name="Название")

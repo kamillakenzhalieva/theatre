@@ -9,10 +9,12 @@ from .serializers import (
 )
 
 def index(request):
-    return render(request, 'index.html')
+    home_data = HomePage.objects.first() 
+    return render(request, 'index.html', {'home': home_data})
 
 def about(request):
-    return render(request, 'about.html')
+    home_data = HomePage.objects.first()
+    return render(request, 'about.html', {'home': home_data})
 
 def afisha(request):
     events = Event.objects.all()
@@ -44,7 +46,8 @@ def graduation_view(request):
     } for t in tariffs]
     return render(request, 'graduation.html', {'packages': packages})
 
-
+def admin_panel(request):
+    return render(request, 'admin_panel.html')
 
 
 class HomePageViewSet(viewsets.ModelViewSet):

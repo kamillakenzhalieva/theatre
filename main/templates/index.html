@@ -1,10 +1,9 @@
 {% extends 'base.html' %}
-{% load static %}
-
 {% block content %}
 <div class="afisha-container" style="text-align: center;">
-    <h1 class="page-title">Добро пожаловать в «Новый стиль»!</h1>
-    <p class="page-subtitle">Театр-праздник для детей и взрослых</p>
+    <h1 class="page-title">{{ home.welcome_text|default:"Добро пожаловать!" }}</h1>
+    
+    <p class="page-subtitle">{{ home.subtitle }}</p>
     
     <div style="margin-top: 30px;">
         <a href="{% url 'afisha' %}" class="btn-buy">Посмотреть афишу</a>

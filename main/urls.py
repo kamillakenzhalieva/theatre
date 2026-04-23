@@ -22,4 +22,7 @@ urlpatterns = [
     
     path('apply/', views.ApplicationViewSet.as_view({'post': 'create'}), name='application_page'),
     path('management/', views.admin_panel, name='admin_panel'),
+    
+    path('api/calendar-data/', views.calendar_events_api, name='calendar_data'),
+    path('calendar-page/', views.calendar_page_render),
 ]

@@ -2,6 +2,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <meta charset="UTF-8">
     <title>Панель управления | Новый Стиль</title>
     <style>
@@ -143,6 +145,7 @@
     <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
     <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
     <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
+    <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
     <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
     <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
 </div>
@@ -225,58 +228,72 @@
     };
 
     async function loadSection(section) {
-        currentSection = section;
-        
-        const addBtn = document.getElementById('add-btn');
-        if (addBtn) {
-            if (section === 'home' || section === 'applications') {
-                addBtn.style.display = 'none';
-            } else {
-                addBtn.style.display = 'block';
-            }
+    currentSection = section;
+    const contentArea = document.getElementById('content-area');
+    const addBtn = document.getElementById('add-btn');
+    const titleEl = document.getElementById('section-title');
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick')?.includes(`'${section}'`)) {
+            btn.classList.add('active');
         }
+    });
 
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        
-        const buttons = document.querySelectorAll('.nav-btn');
-        buttons.forEach(btn => {
-            if (btn.getAttribute('onclick')?.includes(section)) {
-                btn.classList.add('active');
-            }
-        });
-
-        const head = document.getElementById('table-head');
-        const body = document.getElementById('table-body');
-        head.innerHTML = ''; 
-        body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:20px;">Загрузка...</td></tr>';
-
-        const titles = { 
-            'events': 'Управление спектаклями', 
-            'tariffs': 'Настройка тарифов', 
-            'applications': 'Входящие заявки',
-            'home': 'Главная страница и контакты'
-        };
-        document.getElementById('section-title').innerText = titles[section];
-
-        try {
-            const response = await fetch(`/api/${section}/`);
-            
-            if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-            
-            const data = await response.json();
-
-            if (section === 'home') {
-                renderHomeSection(data);
-            } else {
-                renderTable(data);
-            }
-        } catch (error) {
-            console.error(error);
-            body.innerHTML = `<tr><td colspan="100%" style="color:red; text-align:center; padding:20px;">
-                Ошибка загрузки: путь /api/${section}/ не найден или вернул ошибку.
-            </td></tr>`;
-        }
+    const titles = { 
+        'events': 'Управление спектаклями', 
+        'tariffs': 'Настройка тарифов', 
+        'applications': 'Входящие заявки',
+        'home': 'Главная страница и контакты',
+        'calendar': 'Календарь мероприятий'
+    };
+    titleEl.innerText = titles[section] || 'Панель управления';
+    
+    if (addBtn) {
+        addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
     }
+
+    contentArea.innerHTML = '<p style="padding:20px;">Загрузка...</p>';
+
+    if (section === 'calendar') {
+        try {
+            const response = await fetch('/calendar-page/');
+            const html = await response.text();
+            contentArea.innerHTML = html;
+
+            const scripts = contentArea.querySelectorAll("script");
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement("script");
+                newScript.text = oldScript.text;
+                document.head.appendChild(newScript).parentNode.removeChild(newScript);
+            });
+
+            setTimeout(() => {
+                if (window.initFullCalendar) window.initFullCalendar();
+            }, 50);
+
+        } catch (e) {
+            contentArea.innerHTML = 'Ошибка загрузки страницы календаря';
+        }
+        return;
+    }
+
+    contentArea.innerHTML = `
+        <table class="admin-table">
+            <thead><tr id="table-head"></tr></thead>
+            <tbody id="table-body"></tbody>
+        </table>`;
+
+    try {
+        const response = await fetch(`/api/${section}/`);
+        const data = await response.json();
+        section === 'home' ? renderHomeSection(data) : renderTable(data);
+    } catch (e) {
+        console.error(e);
+        const body = document.getElementById('table-body');
+        if (body) body.innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>';
+    }
+}
 
     function renderTable(data) {
         const head = document.getElementById('table-head');

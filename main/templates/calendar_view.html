@@ -1,0 +1,31 @@
+<style>
+    #calendar-container { background: white; padding: 20px; border-radius: 15px; }
+    #calendar { min-height: 600px; }
+    .fc { color: #2c3e50 !important; }
+</style>
+
+<div id="calendar-container">
+    <div id="calendar"></div>
+</div>
+
+<script>
+    window.initFullCalendar = function() {
+        const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) return;
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ru',
+            firstDay: 1,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+            },
+            events: '/api/calendar-data/'
+        });
+
+        calendar.render();
+        console.log("Календарь запущен!");
+    };
+</script>

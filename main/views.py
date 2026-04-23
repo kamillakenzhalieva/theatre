@@ -7,6 +7,8 @@ from .serializers import (
     HomePageSerializer, EventSerializer, ServiceSerializer, 
     TariffSerializer, ApplicationSerializer
 )
+import datetime
+from django.http import JsonResponse
 
 def index(request):
     home_data = HomePage.objects.first() 
@@ -94,3 +96,45 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if request.accepted_renderer.format == 'html':
             return redirect('home')
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+def calendar_events_api(request):
+    data = []
+
+    for ev in Event.objects.filter(is_active=True):
+        data.append({
+            'id': f"ev_{ev.id}",
+            'title': f"🎭 {ev.title}",
+            'start': ev.date.isoformat(),
+            'backgroundColor': '#a2d2ff', 
+            'borderColor': '#7fb3e6',
+            'extendedProps': {
+                'description': ev.short_description,
+                'location': ev.location
+            }
+        })
+
+
+    apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
+    for ap in apps:
+        start_dt = datetime.datetime.combine(ap.event_date, ap.event_time)
+        
+        is_bday = ap.category == 'birthday'
+        color = '#ff8b94' if is_bday else '#a8e6cf'
+        icon = '🎂' if is_bday else '🎓'
+
+        data.append({
+            'id': f"ap_{ap.id}",
+            'title': f"{icon} {ap.full_name}",
+            'start': start_dt.isoformat(),
+            'backgroundColor': color,
+            'borderColor': color,
+            'extendedProps': {
+                'phone': ap.phone,
+                'tariff': ap.tariff.name if ap.tariff else 'Не указан'
+            }
+        })
+
+    return JsonResponse(data, safe=False)
+
+def calendar_page_render(request):
+    return render(request, 'calendar_view.html')

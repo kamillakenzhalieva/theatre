@@ -10,6 +10,7 @@ from .serializers import (
 import datetime
 from django.http import JsonResponse
 
+
 def index(request):
     home_data = HomePage.objects.first() 
     return render(request, 'index.html', {'home': home_data})
@@ -84,8 +85,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if data.get('category') in cat_map:
             data['category'] = cat_map[data.get('category')]
 
-        if 'selection' in data and not data.get('tariff'):
-            tariff = Tariff.objects.filter(name=data.get('selection')).first()
+        if data.get('category') != 'spectacle' and 'selection' in data:
+            clean_name = data.get('selection').replace('Тариф: ', '').replace('Пакет: ', '')
+            tariff = Tariff.objects.filter(name__icontains=clean_name).first()
             if tariff:
                 data['tariff'] = tariff.id
 
@@ -93,10 +95,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         
-        if request.accepted_renderer.format == 'html':
+        if request.accepted_renderer.format == 'html' and 'HTTP_X_REQUESTED_WITH' not in request.META:
             return redirect('home')
+            
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
+
 def calendar_events_api(request):
     data = []
 
@@ -113,8 +117,8 @@ def calendar_events_api(request):
             }
         })
 
-
-    apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
+    apps = Application.objects.filter(status='approved').exclude(event_date__isnull=True).exclude(event_time__isnull=True)
+    
     for ap in apps:
         start_dt = datetime.datetime.combine(ap.event_date, ap.event_time)
         

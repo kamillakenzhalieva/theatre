@@ -5,319 +5,47 @@
     <meta charset="UTF-8">
     <title>Театр Новый Стиль</title>
     <style>
-        .spectacles-container {
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 0 20px;
-        }
-        .event-card {
-            display: flex;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            min-height: 350px;
-        }
-        .event-image-side {
-            flex: 1;
-            position: relative;
-            min-width: 400px;
-        }
-        .event-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .price-tag {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: white;
-            padding: 8px 15px;
-            border-radius: 50px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .event-content-side {
-            flex: 1.5;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .event-meta {
-            display: flex;
-            gap: 20px;
-            color: #2ec4b6;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        .event-title {
-            font-size: 32px;
-            margin: 0 0 20px 0;
-            text-transform: uppercase;
-        }
-        .event-text {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-        .button-group {
-            display: flex;
-            gap: 15px;
-        }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(5px);
-        }
-        .modal-box {
-            background: white;
-            width: 90%;
-            max-width: 900px;
-            border-radius: 25px;
-            display: flex;
-            overflow: hidden;
-            position: relative;
-            max-height: 90vh;
-        }
+       
+        body { margin: 0; font-family: Arial, sans-serif; background-color: #f9f9f9; }
+        header { background-color: #a8e6cf; padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 20px; font-weight: bold; }
+        nav a { text-decoration: none; color: #333; margin-right: 20px; font-size: 15px; }
+        nav a:hover { color: #000; text-decoration: underline; }
         
-        .contacts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
-        }
+        .spectacles-container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
+        .event-card { display: flex; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 30px; min-height: 350px; }
+        .event-image-side { flex: 1; position: relative; min-width: 400px; background-color: #eee; }
+        .event-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .price-tag { position: absolute; top: 20px; left: 20px; background: white; padding: 8px 15px; border-radius: 50px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 10; }
+        .event-content-side { flex: 1.5; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        .event-meta { display: flex; gap: 20px; color: #2ec4b6; font-weight: 600; margin-bottom: 15px; }
+        .event-title { font-size: 32px; margin: 0 0 20px 0; text-transform: uppercase; }
+        .event-text { color: #666; line-height: 1.6; margin-bottom: 30px; }
+        .button-group { display: flex; gap: 15px; }
 
-        .contact-card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            transition: transform 0.3s ease;
-        }
+        .btn-buy { display: inline-block; text-decoration: none; background: linear-gradient(135deg, #a8e6cf 0%, #8cedc7 100%); color: #1a1a1a; padding: 12px 35px; border-radius: 50px; font-weight: 700; font-size: 15px; cursor: pointer; border: none; transition: 0.3s; }
+        .btn-buy:hover { transform: scale(1.03); }
+        .btn-more { display: inline-block; text-decoration: none; background: #f0f0f0; color: #333; padding: 12px 25px; border-radius: 50px; font-weight: 700; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
 
-        .contact-card:hover {
-            transform: translateY(-5px);
-        }
 
-        .contact-icon {
-            font-size: 40px;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .contact-card h3 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .contact-card p {
-            color: #666;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-
-        .map-container {
-            margin-top: 50px;
-            border-radius: 25px;
-            overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-            height: 450px;
-            width: 100%;
-            border: 2px solid #fff;
-        }
-
-        .map-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .modal-overlay {
-            backdrop-filter: blur(5px); 
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-card { background: #fff; width: 450px; border-radius: 25px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .modal-header-mint { background: #a8e6cf; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header-mint h2 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        .modal-body { padding: 25px; }
         
-        body { 
-            margin: 0; 
-            font-family: Arial, sans-serif; 
-            background-color: #f9f9f9; 
-        }
-        header {
-            background-color: #a8e6cf; 
-            padding: 15px 30px;
-            display: flex;
-            align-items: center;
-        }
-        .logo { 
-            font-size: 20px; 
-            font-weight: bold; 
-            margin-right: 40px; 
-        }
-        nav a {
-            text-decoration: none;
-            color: #333;
-            margin-right: 20px;
-            font-size: 15px;
-        }
-        nav a:hover { 
-            color: #000; 
-            text-decoration: underline; 
-        }
-        .afisha-container {
-            max-width: 1100px; 
-            margin: 0 auto;
-            padding: 60px 20px;
-        }
-        .page-header {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-        .page-title {
-            font-size: 42px;
-            color: #1a1a1a;
-            margin-bottom: 10px;
-            font-weight: 800;
-        }
-        .page-subtitle {
-            font-size: 18px;
-            color: #666;
-        }
-        .events-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 35px; 
-        }
-        .event-card {
-            display: flex; 
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
-            overflow: hidden; 
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .event-card:hover {
-            transform: translateY(-5px); 
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12); 
-        }
-        .event-image {
-            width: 35%; 
-            min-height: 250px;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-        .event-price {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: #ffffff;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 14px;
-            color: #1a1a1a;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-        .event-info {
-            width: 65%;
-            padding: 30px 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .event-meta {
-            display: flex;
-            gap: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #2ec4b6; 
-        }
-        .event-title {
-            font-size: 28px;
-            color: #111;
-            margin: 10px 0 15px 0;
-        }
-        .event-description {
-            color: #555;
-            font-size: 15px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        .btn-buy {
-            display: inline-block;
-            text-decoration: none;
-            background: linear-gradient(135deg, #a8e6cf 0%, #8cedc7 100%);
-            color: #1a1a1a;
-            padding: 12px 35px;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(168, 230, 207, 0.4);
-            text-align: center;
-        }
-        .btn-buy:hover {
-            transform: scale(1.03);
-            box-shadow: 0 6px 20px rgba(168, 230, 207, 0.6);
-        }
+        .choice-btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #a8e6cf; border-radius: 12px; background: none; font-weight: bold; cursor: pointer; transition: 0.3s; text-align: center; color: #333; text-decoration: none; }
+        .choice-btn:hover { background: #a8e6cf; color: white; }
 
-        .btn-more {
-            display: inline-block;
-            text-decoration: none;
-            background: #f0f0f0; 
-            color: #333;
-            padding: 12px 25px;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            text-align: center;
-            border: 1px solid #ddd;
-        }
-        .btn-more:hover {
-            background: #e0e0e0;
-            transform: translateY(-2px);
-        }
+        .form-field { margin-bottom: 12px; }
+        .form-field label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 4px; }
+        .form-field input, .form-field select, .form-field textarea { width: 100%; padding: 10px; border: 2px solid #f0f0f0; border-radius: 10px; box-sizing: border-box; }
+        .btn-submit-order { background: #ff8b94; color: white; border: none; padding: 15px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-        .event-footer {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .btn-buy.disabled {
-            background: #e0e0e0;
-            color: #888;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
         @media (max-width: 768px) {
-            .event-card {
-                flex-direction: column; 
-            }
-            .event-image {
-                width: 100%;
-                height: 200px;
-            }
-            .event-info {
-                width: 100%;
-                padding: 20px;
-            }
-        }        
+            .event-card { flex-direction: column; }
+            .event-image-side { min-width: 100%; height: 250px; }
+        }
     </style>
 </head>
 <body>
@@ -336,168 +64,164 @@
     </header>
     
     <main>
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </main>
-    
-<style>
-    .modal-overlay {
-        display: none; position: fixed; z-index: 9999;
-        left: 0; top: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
-    }
-    .modal-card {
-        background: #fff; margin: 5vh auto; width: 450px;
-        border-radius: 25px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-    }
-    .modal-header-mint {
-        background: #a8e6cf; padding: 20px;
-        display: flex; justify-content: space-between; align-items: center;
-    }
-    .modal-header-mint h2 { margin: 0; font-size: 18px; text-transform: uppercase; }
-    .modal-body { padding: 25px; }
-    
-    .choice-btn {
-        display: block; width: 100%; padding: 15px; margin-bottom: 10px;
-        border: 2px solid #a8e6cf; border-radius: 12px; background: none;
-        font-weight: bold; cursor: pointer; transition: 0.3s; text-align: center;
-    }
-    .choice-btn:hover { background: #a8e6cf; color: white; }
 
-    .form-field { margin-bottom: 12px; }
-    .form-field label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 4px; }
-    .form-field input, .form-field select, .form-field textarea {
-        width: 100%; padding: 10px; border: 2px solid #f0f0f0; border-radius: 10px; box-sizing: border-box;
-    }
-    .btn-submit-order {
-        background: #ff8b94; color: white; border: none; padding: 15px;
-        border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px;
-    }
-</style>
-
-<div id="serviceChoiceModal" class="modal-overlay">
-    <div class="modal-card">
-        <div class="modal-header-mint">
-            <h2>Выберите услугу</h2>
-            <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <button type="button" class="choice-btn" onclick="openFinalForm('День Рождения')">День Рождения</button>
-            <button type="button" class="choice-btn" onclick="openFinalForm('Выпускной')">Выпускной</button>
-            <button type="button" class="choice-btn" onclick="openFinalForm('Спектакль')">Спектакль</button>
+    <!-- Окно выбора -->
+    <div id="serviceChoiceModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header-mint">
+                <h2>Выберите услугу</h2>
+                <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <button type="button" class="choice-btn" onclick="openFinalForm('День Рождения')">День Рождения</button>
+                <button type="button" class="choice-btn" onclick="openFinalForm('Выпускной')">Выпускной</button>
+                <button type="button" class="choice-btn" onclick="openFinalForm('Спектакль')">Спектакль</button>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="orderFormModal" class="modal-overlay">
-    <div class="modal-card" style="width: 500px; margin: 2vh auto;"> 
-        <div class="modal-header-mint">
-            <h2 id="modalTitle">Оформление</h2>
-            <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
-        </div>
-        <div class="modal-body" style="max-height: 85vh; overflow-y: auto;">
-            <form method="post" action="{% url 'application_page' %}">
-                {% csrf_token %}
-                <input type="hidden" name="category" id="categoryInput">
-                
-                <div class="form-field">
-                    <label>ФИО заказчика</label>
-                    <input type="text" name="full_name" required placeholder="Иванов Иван Иванович">
-                </div>
-
-                <div style="display:flex; gap:10px">
-                    <div class="form-field" style="flex:1">
-                        <label>Телефон</label>
-                        <input type="tel" name="phone" required placeholder="+7 (___) ___">
+    <div id="orderFormModal" class="modal-overlay">
+        <div class="modal-card" style="width: 500px; margin: 2vh auto;"> 
+            <div class="modal-header-mint">
+                <h2 id="modalTitle">Оформление</h2>
+                <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBodyContent" style="max-height: 85vh; overflow-y: auto;">
+                <form id="mainOrderForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="category" id="categoryInput">
+                    <div class="form-field">
+                        <label>ФИО заказчика</label>
+                        <input type="text" name="full_name" required>
                     </div>
-                    <div class="form-field" style="flex:1">
-                        <label>Email</label>
-                        <input type="email" name="email" placeholder="example@mail.ru">
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Телефон</label>
+                            <input type="tel" name="phone" required>
+                        </div>
+                        <div class="form-field" style="flex:1">
+                            <label>Email</label>
+                            <input type="email" name="email">
+                        </div>
                     </div>
-                </div>
-
-                <div style="display:flex; gap:10px">
-                    <div class="form-field" style="flex:1">
-                        <label>Возраст детей</label>
-                        <input type="text" name="age_range" placeholder="напр. 5-7 лет">
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Возраст детей</label>
+                            <input type="text" name="age">
+                        </div>
+                        <div class="form-field" style="flex:1" id="selectionContainer">
+                            <label id="dynamicLabel">Выберите тариф</label>
+                            <select name="selection" id="dynamicSelect"></select>
+                        </div>
                     </div>
-                    <div class="form-field" style="flex:1">
-                        <label id="dynamicLabel">Выбор</label>
-                        <select name="selection" id="dynamicSelect"></select>
+                    <div class="form-field">
+                        <label>Адрес проведения</label>
+                        <input type="text" name="address">
                     </div>
-                </div>
-
-                <div class="form-field">
-                    <label>Адрес проведения</label>
-                    <input type="text" name="address" placeholder="Город, улица, дом, кв.">
-                </div>
-
-                <div style="display:flex; gap:10px">
-                    <div class="form-field" style="flex:1">
-                        <label>Дата</label>
-                        <input type="date" name="event_date" required>
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Дата</label>
+                            <input type="date" name="event_date" required>
+                        </div>
+                        <div class="form-field" style="flex:1">
+                            <label>Время</label>
+                            <input type="time" name="event_time" required>
+                        </div>
                     </div>
-                    <div class="form-field" style="flex:1">
-                        <label>Время</label>
-                        <input type="time" name="event_time" required>
-                    </div>
-                </div>
+                    <button type="submit" class="btn-submit-order" id="submitBtn">ОТПРАВИТЬ ЗАЯВКУ</button>
+                </form>
 
-                <div class="form-field">
-                    <label>Дополнительный комментарий</label>
-                    <textarea name="comment" rows="2" placeholder="Ваши пожелания..."></textarea>
+                <div id="successMessage" style="display:none; text-align: center; padding: 20px;">
+                    <div style="font-size: 50px; margin-bottom: 20px;">✅</div>
+                    <h3 style="color: #2ec4b6;">Спасибо за заявку!</h3>
+                    <p style="line-height: 1.6; color: #555;">Cпасибо за заявку, ждите ответа на почту от нашего администратора, он ответит в ближайшее время!</p>
+                    <button type="button" class="choice-btn" onclick="closeAllModals()" style="margin-top: 20px;">Закрыть</button>
                 </div>
-
-                <button type="submit" class="btn-submit-order">ОТПРАВИТЬ ЗАЯВКУ</button>
-            </form>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const data = {
-        'День Рождения': ['Тариф: Мини', 'Тариф: Стандарт', 'Тариф: VIP'],
-        'Выпускной': ['Пакет: Садик', 'Пакет: Школа (4 класс)', 'Пакет: Максимум'],
-        'Спектакль': ['Три поросенка', 'Красная Шапочка', 'Тайны старого шкафа', 'Золушка'] 
-    };
+    <script>
+        const selectionData = {
+            'День Рождения': ['Тариф: Мини', 'Тариф: Стандарт', 'Тариф: VIP'],
+            'Выпускной': ['Пакет: Садик', 'Пакет: Школа', 'Пакет: Максимум']
+        };
 
-    function openChoiceModal() {
-        document.getElementById('serviceChoiceModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function openFinalForm(type) {
-        document.getElementById('serviceChoiceModal').style.display = 'none';
-        document.getElementById('orderFormModal').style.display = 'block';
-        
-        document.getElementById('categoryInput').value = type;
-        document.getElementById('modalTitle').innerText = type.toUpperCase();
-        
-        const label = document.getElementById('dynamicLabel');
-        const select = document.getElementById('dynamicSelect');
-        select.innerHTML = '';
-        
-        label.innerText = (type === 'Спектакль') ? 'Выберите спектакль' : 'Выберите тариф';
-        
-        data[type].forEach(item => {
-            let opt = document.createElement('option');
-            opt.value = item;
-            opt.innerHTML = item;
-            select.appendChild(opt);
-        });
-    }
-
-    function closeAllModals() {
-        document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
-        document.body.style.overflow = 'auto'; 
-    }
-
-    window.onclick = function(event) {
-        if (event.target.classList.contains('modal-overlay')) {
-            closeAllModals();
+        function openChoiceModal() {
+            document.getElementById('serviceChoiceModal').style.display = 'flex';
         }
-    }
-</script>
 
+        function openFinalForm(type) {
+            document.getElementById('serviceChoiceModal').style.display = 'none';
+            document.getElementById('orderFormModal').style.display = 'flex';
+            document.getElementById('mainOrderForm').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            const container = document.getElementById('selectionContainer');
+            const select = document.getElementById('dynamicSelect');
+            
+            
+            if (type === 'День Рождения' || type === 'Выпускной') {
+                container.style.display = 'block';
+                document.getElementById('categoryInput').value = type;
+                document.getElementById('modalTitle').innerText = type.toUpperCase();
+                
+                select.innerHTML = '';
+                selectionData[type].forEach(item => {
+                    let opt = document.createElement('option');
+                    opt.value = item;
+                    opt.innerHTML = item;
+                    select.appendChild(opt);
+                });
+            } else {
+                container.style.display = 'none';
+                document.getElementById('categoryInput').value = 'spectacle';
+                document.getElementById('modalTitle').innerText = type.toUpperCase();
+            }
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        document.getElementById('mainOrderForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = 'ОТПРАВКА...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('{% url "application_page" %}', {
+                    method: 'POST',
+                    body: new FormData(this),
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    document.getElementById('mainOrderForm').style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('modalTitle').innerText = 'ГОТОВО';
+                } else {
+                    alert('Ошибка при заполнении. Проверьте поля.');
+                    btn.innerText = 'ОТПРАВИТЬ ЗАЯВКУ';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('Ошибка сети.');
+                btn.innerText = 'ОТПРАВИТЬ ЗАЯВКУ';
+                btn.disabled = false;
+            }
+        };
+
+        window.onclick = function(event) {
+            if (event.target.className === 'modal-overlay') closeAllModals();
+        }
+    </script>
 </body>
 </html>

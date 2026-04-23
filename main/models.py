@@ -29,8 +29,8 @@ class Event(models.Model):
         return self.title
 
     class Meta:
-        verbose_name = "Event"
-        verbose_name_plural = "Events"
+        verbose_name = "Спектакль"
+        verbose_name_plural = "Спектакли"
 
 class Service(models.Model):
     title = models.CharField(max_length=200)
@@ -58,16 +58,36 @@ class Application(models.Model):
         ('graduation', 'Выпускной'),
         ('spectacle', 'Спектакль'),
     ]
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    full_name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=20)
-    email = models.EmailField()
+    STATUS_CHOICES = [
+        ('pending', 'Ожидание'),
+        ('approved', 'Одобрено'),
+        ('rejected', 'Отклонено'),
+    ]
+    
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, verbose_name="Категория")
+    full_name = models.CharField(max_length=255, verbose_name="ФИО")
+    phone = models.CharField(max_length=20, verbose_name="Телефон")
+    email = models.EmailField(verbose_name="Email")
     age = models.CharField(max_length=50, verbose_name="Возраст детей")
-    address = models.CharField(max_length=500)
+    address = models.CharField(max_length=500, verbose_name="Адрес")
     event_date = models.DateField(verbose_name="Дата события", null=True, blank=True)
     event_time = models.TimeField(verbose_name="Время события", null=True, blank=True)
-    tariff = models.ForeignKey(Tariff, on_delete=models.CASCADE, verbose_name="Выбранный тариф")
-    created_at = models.DateTimeField(auto_now_add=True)
+    
+   
+    tariff = models.ForeignKey(Tariff, on_delete=models.CASCADE, verbose_name="Выбранный тариф", null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='pending', 
+        verbose_name="Статус"
+    )
 
     def __str__(self):
-        return f"{self.full_name} — {self.get_category_display()} ({self.tariff.name})"
+        return f"{self.full_name} — {self.get_category_display()} ({self.status})"
+
+    class Meta:
+        verbose_name = "Заявка"
+        verbose_name_plural = "Заявки"

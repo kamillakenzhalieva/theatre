@@ -2,10 +2,12 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <meta charset="UTF-8">
     <title>Панель управления | Новый Стиль</title>
+    <!-- ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ КАЛЕНДАРЯ -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    
     <style>
         :root {
             --mint: #a8e6cf;
@@ -13,6 +15,7 @@
             --gray: #f9f9f9;
             --pink: #ff8b94;
             --blue: #a2d2ff;
+            --yellow: #ffd93d;
         }
 
         body {
@@ -93,6 +96,16 @@
         .admin-table td {
             padding: 15px;
             border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
         .btn {
@@ -107,7 +120,8 @@
         .btn-add { background: var(--mint); color: var(--dark); }
         .btn-edit { background: var(--blue); color: var(--dark); margin-right: 5px; }
         .btn-delete { background: var(--pink); color: white; }
-        .btn-add:hover { transform: scale(1.05); }
+        .btn-approve { background: #2ec4b6; color: white; margin-right: 5px; }
+        .btn-reject { background: var(--pink); color: white; }
 
         .modal-overlay {
             display: none; 
@@ -135,17 +149,19 @@
         .form-group input, .form-group textarea, .form-group select {
             width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box;
         }
+
+        #calendar-container { background: white; padding: 20px; border-radius: 15px; }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
     <h2>Админ-панель</h2>
-    <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
-    <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
-    <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
-    <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
-    <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
+    <button class="nav-btn active" onclick="loadSection('events', this)">🎭 Спектакли</button>
+    <button class="nav-btn" onclick="loadSection('tariffs', this)">💰 Тарифы</button>
+    <button class="nav-btn" onclick="loadSection('applications', this)">📩 Заявки</button>
+    <button class="nav-btn" onclick="loadSection('home', this)">🏠 Главная и Контакты</button>
+    <button class="nav-btn" onclick="loadSection('calendar', this)">📅 Календарь</button>
     <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
     <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
 </div>
@@ -157,17 +173,14 @@
     </div>
 
     <div id="content-area">
-        <table class="admin-table">
-            <thead><tr id="table-head"></tr></thead>
-            <tbody id="table-body"></tbody>
-        </table>
+        <!-- Контент -->
     </div>
 </div>
 
 <div id="modal-overlay" class="modal-overlay">
     <div class="modal-card">
-        <h2 id="modal-title" style="margin-top: 0; font-size: 20px;">Добавить запись</h2>
-        <form id="admin-form" enctype="multipart/form-data">
+        <h2 id="modal-title">Редактирование</h2>
+        <form id="admin-form">
             <input type="hidden" name="id" id="field-id">
             <div id="form-fields"></div>
             <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
@@ -184,276 +197,192 @@
     const schema = {
         'home': [
             { name: 'welcome_text', label: 'Заголовок приветствия', type: 'text' },
-            { name: 'subtitle', label: 'Подзаголовок/Описание', type: 'textarea' },
-            { name: 'banner_image', label: 'Главный баннер', type: 'file' },
+            { name: 'subtitle', label: 'Описание', type: 'textarea' },
             { name: 'phone', label: 'Телефон', type: 'text' },
-            { name: 'email', label: 'Email для связи', type: 'text' },
-            { name: 'address', label: 'Адрес театра', type: 'text' }
+            { name: 'email', label: 'Email', type: 'text' },
+            { name: 'address', label: 'Адрес', type: 'text' }
         ],
         'events': [
             { name: 'title', label: 'Название', type: 'text' },
-            { name: 'image', label: 'Обложка (картинка)', type: 'file' },
-            { name: 'short_description', label: 'Краткое описание', type: 'text' },
-            { name: 'description', label: 'Полное описание', type: 'textarea' },
-            { name: 'date', label: 'Дата', type: 'date' },
-            { name: 'time', label: 'Время', type: 'time' },
+            { name: 'date', label: 'Дата (ГГГГ-ММ-ДДTЧЧ:ММ)', type: 'text' },
             { name: 'location', label: 'Локация', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
-            { name: 'is_active', label: 'Отображать на сайте', type: 'checkbox' }
+            { name: 'is_active', label: 'Активен', type: 'checkbox' }
         ],
         'tariffs': [
-            { 
-                name: 'category', 
-                label: 'Категория', 
-                type: 'select',
-                options: [
-                    { value: 'birthday', label: 'День рождения' },
-                    { value: 'graduation', label: 'Выпускной' },
-                    { value: 'spectacle', label: 'Спектакль' }
-                ]
-            },
-            { name: 'name', label: 'Название тарифа', type: 'text' },
+            { name: 'category', label: 'Категория', type: 'select', options: [{value:'birthday', label:'День рождения'}, {value:'graduation', label:'Выпускной'}, {value:'spectacle', label:'Спектакль'}]},
+            { name: 'name', label: 'Название', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
-            { name: 'features_list', label: 'Список услуг', type: 'textarea' }
+            { name: 'features_list', label: 'Услуги (через Enter)', type: 'textarea' }
         ],
         'applications': [
-            { name: 'full_name', label: 'Имя клиента', type: 'text' },
-            { name: 'phone', label: 'Телефон', type: 'text' },
-            { name: 'email', label: 'Email', type: 'text' },
-            { name: 'age', label: 'Возраст детей', type: 'text' },
-            { name: 'address', label: 'Адрес', type: 'text' },
-            { name: 'event_date', label: 'Дата события', type: 'date' },
-            { name: 'event_time', label: 'Время события', type: 'time' }
+            { name: 'status', label: 'Статус', type: 'select', options: [{value:'pending', label:'Ожидание'}, {value:'approved', label:'Одобрено'}, {value:'rejected', label:'Отклонено'}]}
         ]
     };
 
-    async function loadSection(section) {
-    currentSection = section;
-    const contentArea = document.getElementById('content-area');
-    const addBtn = document.getElementById('add-btn');
-    const titleEl = document.getElementById('section-title');
+    async function loadSection(section, btn) {
+        currentSection = section;
+        const contentArea = document.getElementById('content-area');
+        const addBtn = document.getElementById('add-btn');
+        const titleEl = document.getElementById('section-title');
 
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('onclick')?.includes(`'${section}'`)) {
-            btn.classList.add('active');
-        }
-    });
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
 
-    const titles = { 
-        'events': 'Управление спектаклями', 
-        'tariffs': 'Настройка тарифов', 
-        'applications': 'Входящие заявки',
-        'home': 'Главная страница и контакты',
-        'calendar': 'Календарь мероприятий'
-    };
-    titleEl.innerText = titles[section] || 'Панель управления';
-    
-    if (addBtn) {
+        const titles = { 'events':'🎭 Спектакли', 'tariffs':'💰 Тарифы', 'applications':'📩 Заявки', 'home':'🏠 Контакты', 'calendar':'📅 Календарь' };
+        titleEl.innerText = titles[section];
         addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
-    }
 
-    contentArea.innerHTML = '<p style="padding:20px;">Загрузка...</p>';
-
-    if (section === 'calendar') {
-        try {
-            const response = await fetch('/calendar-page/');
-            const html = await response.text();
-            contentArea.innerHTML = html;
-
-            const scripts = contentArea.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                newScript.text = oldScript.text;
-                document.head.appendChild(newScript).parentNode.removeChild(newScript);
+        if (section === 'calendar') {
+            contentArea.innerHTML = '<div id="calendar-container"><div id="calendar"></div></div>';
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ru',
+                firstDay: 1,
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+                events: '/api/calendar-data/'
             });
-
-            setTimeout(() => {
-                if (window.initFullCalendar) window.initFullCalendar();
-            }, 50);
-
-        } catch (e) {
-            contentArea.innerHTML = 'Ошибка загрузки страницы календаря';
-        }
-        return;
-    }
-
-    contentArea.innerHTML = `
-        <table class="admin-table">
-            <thead><tr id="table-head"></tr></thead>
-            <tbody id="table-body"></tbody>
-        </table>`;
-
-    try {
-        const response = await fetch(`/api/${section}/`);
-        const data = await response.json();
-        section === 'home' ? renderHomeSection(data) : renderTable(data);
-    } catch (e) {
-        console.error(e);
-        const body = document.getElementById('table-body');
-        if (body) body.innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>';
-    }
-}
-
-    function renderTable(data) {
-        const head = document.getElementById('table-head');
-        const body = document.getElementById('table-body');
-        head.innerHTML = ''; 
-        body.innerHTML = '';
-
-        if (!data || data.length === 0) {
-            body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:30px;">Данных пока нет</td></tr>';
+            calendar.render();
             return;
         }
 
-        const keys = currentSection === 'events' 
-            ? ['id', 'title', 'date', 'price'] 
-            : currentSection === 'tariffs' 
-                ? ['id', 'name', 'price', 'category']
-                : ['id', 'full_name', 'phone', 'event_date'];
-        
-        keys.forEach(key => head.innerHTML += `<th>${key.toUpperCase()}</th>`);
-        head.innerHTML += `<th>ДЕЙСТВИЯ</th>`;
+        contentArea.innerHTML = '<p>Загрузка...</p>';
+        const response = await fetch(`/api/${section}/`);
+        const data = await response.json();
 
-        data.forEach(item => {
-            let row = `<tr>`;
-            keys.forEach(key => row += `<td>${item[key] || '-'}</td>`);
-            
-            let actionButtons = `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button>`;
-            if (currentSection !== 'applications') {
-                actionButtons += `<button class="btn btn-delete" onclick="deleteItem(${item.id})">Удалить</button>`;
-            }
-            
-            row += `<td>${actionButtons}</td></tr>`;
-            body.innerHTML += row;
-        });
+        if (section === 'home') renderHomeSection(data);
+        else renderTable(data);
     }
 
     function renderHomeSection(data) {
-        const body = document.getElementById('table-body');
-        const head = document.getElementById('table-head');
-        head.innerHTML = ''; 
-        body.innerHTML = '';
-
-        const item = (Array.isArray(data) && data.length > 0) ? data[0] : (data.id ? data : null);
-
+        const item = Array.isArray(data) ? data[0] : data;
         if (!item) {
-            body.innerHTML = '<tr><td style="padding:40px; text-align:center;">Данных нет. Создайте их в /admin/</td></tr>';
+            document.getElementById('content-area').innerHTML = '<p>Данные не созданы.</p>';
             return;
         }
-
-        body.innerHTML = `
-            <tr>
-                <td colspan="100%" style="padding: 40px; text-align: center;">
-                    <div style="background: white; padding: 30px; border-radius: 20px; display: inline-block; border: 2px solid var(--mint);">
-                        <h2 style="margin-top:0;">${item.welcome_text || 'Заголовок не задан'}</h2>
-                        <p>📍 ${item.address || 'Адрес не заполнен'}</p>
-                        <p>📞 ${item.phone || 'Телефон не заполнен'}</p>
-                        <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})' style="padding: 10px 30px; margin-top:10px;">
-                            🔧 Редактировать контакты и текст
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
+        document.getElementById('content-area').innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 20px; border: 2px solid var(--mint);">
+                <h2>${item.welcome_text}</h2>
+                <p>📍 ${item.address}</p>
+                <p>📞 ${item.phone}</p>
+                <p>✉️ ${item.email}</p>
+                <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать контакты</button>
+            </div>`;
     }
 
-    function generateFormFields(item = null) {
-        const container = document.getElementById('form-fields');
-        container.innerHTML = '';
-        
-        schema[currentSection].forEach(field => {
-            let val = item ? item[field.name] : '';
-            let inputHtml;
+    function renderTable(data) {
+        const contentArea = document.getElementById('content-area');
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            contentArea.innerHTML = '<p>Нет данных</p>';
+            return;
+        }
+        const items = Array.isArray(data) ? data : [data];
+        let keys = currentSection === 'applications' ? ['status', 'full_name', 'phone', 'event_date', 'category'] : ['id', 'title', 'name', 'price', 'category'];
+        keys = keys.filter(k => items[0].hasOwnProperty(k) || k === 'status');
 
-            if (field.type === 'select') {
-                inputHtml = `<select name="${field.name}">
-                    ${field.options.map(opt => `<option value="${opt.value}" ${val === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-                </select>`;
-            } else if (field.type === 'textarea') {
-                inputHtml = `<textarea name="${field.name}" rows="3">${val || ''}</textarea>`;
-            } else if (field.type === 'file') {
-                inputHtml = `<input type="file" name="${field.name}" accept="image/*">`;
-                if (val) inputHtml += `<small style="display:block; margin-top:5px; color:green;">Файл уже загружен</small>`;
-            } else if (field.type === 'checkbox') {
-                inputHtml = `<input type="checkbox" name="${field.name}" style="width: auto;" ${val ? 'checked' : ''}>`;
+        let html = '<table class="admin-table"><thead><tr>';
+        keys.forEach(k => html += `<th>${k.toUpperCase()}</th>`);
+        html += '<th>ДЕЙСТВИЯ</th></tr></thead><tbody>';
+
+        items.forEach(item => {
+            html += `<tr>`;
+            keys.forEach(k => {
+                let val = item[k] || '-';
+                if (k === 'status') {
+                    const colors = { 'pending': 'var(--yellow)', 'approved': '#2ec4b6', 'rejected': 'var(--pink)' };
+                    val = `<span class="status-badge" style="background:${colors[item[k]]}">${item[k]}</span>`;
+                }
+                html += `<td>${val}</td>`;
+            });
+            let actions = '';
+            if (currentSection === 'applications') {
+                if (item.status === 'pending') {
+                    actions += `<button class="btn btn-approve" onclick="updateAppStatus(${item.id}, 'approved')">Одобрить</button>`;
+                    actions += `<button class="btn btn-reject" onclick="updateAppStatus(${item.id}, 'rejected')">Отказ</button>`;
+                }
             } else {
-                inputHtml = `<input type="${field.type}" name="${field.name}" value="${val || ''}">`;
+                actions += `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Edit</button>`;
+                actions += `<button class="btn btn-delete" onclick="deleteItem(${item.id})">Del</button>`;
             }
-
-            container.insertAdjacentHTML('beforeend', `
-                <div class="form-group">
-                    <label>${field.label}</label>
-                    ${inputHtml}
-                </div>`);
+            html += `<td>${actions}</td></tr>`;
         });
+        contentArea.innerHTML = html + '</tbody></table>';
+    }
+
+    async function updateAppStatus(id, newStatus) {
+        await fetch(`/api/applications/${id}/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        loadSection('applications');
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('Удалить?')) return;
+        await fetch(`/api/${currentSection}/${id}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        loadSection(currentSection);
     }
 
     function openCreateModal() {
-        document.getElementById('modal-title').innerText = "Добавить новую запись";
-        document.getElementById('field-id').value = ''; 
-        generateFormFields();
+        document.getElementById('modal-title').innerText = "Добавить";
+        document.getElementById('field-id').value = '';
+        renderFields();
         document.getElementById('modal-overlay').style.display = 'flex';
     }
 
     function openEditModal(item) {
-        document.getElementById('modal-title').innerText = "Редактировать запись";
-        document.getElementById('field-id').value = item.id; 
-        generateFormFields(item);
+        document.getElementById('modal-title').innerText = "Изменить";
+        document.getElementById('field-id').value = item.id;
+        renderFields(item);
         document.getElementById('modal-overlay').style.display = 'flex';
     }
 
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('admin-form').reset();
+    function renderFields(item = null) {
+        const container = document.getElementById('form-fields');
+        container.innerHTML = '';
+        schema[currentSection].forEach(f => {
+            let val = item ? item[f.name] : '';
+            let html = `<div class="form-group"><label>${f.label}</label>`;
+            if (f.type === 'select') {
+                html += `<select name="${f.name}">${f.options.map(o => `<option value="${o.value}" ${val===o.value?'selected':''}>${o.label}</option>`).join('')}</select>`;
+            } else if (f.type === 'textarea') {
+                html += `<textarea name="${f.name}">${val}</textarea>`;
+            } else if (f.type === 'checkbox') {
+                html += `<input type="checkbox" name="${f.name}" ${val?'checked':''} style="width:auto">`;
+            } else {
+                html += `<input type="${f.type}" name="${f.name}" value="${val}">`;
+            }
+            container.innerHTML += html + `</div>`;
+        });
     }
 
     document.getElementById('admin-form').onsubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
         const id = document.getElementById('field-id').value;
-
-        const dateVal = formData.get('date') || formData.get('event_date');
-        const timeVal = formData.get('time') || formData.get('event_time');
-
-        if (dateVal && timeVal) {
-            const combinedDateTime = dateVal.includes('T') ? dateVal : `${dateVal}T${timeVal}`;
-            if (currentSection === 'events') formData.set('date', combinedDateTime);
-        }
-
-        if (currentSection === 'events' && e.target.is_active) {
-            formData.set('is_active', e.target.is_active.checked);
-        }
-
-        const url = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`;
+        const formData = new FormData(e.target);
+        const data = {};
+        formData.forEach((v, k) => data[k] = v);
+        
         const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`;
 
-        const response = await fetch(url, {
+        await fetch(url, {
             method: method,
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: formData
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify(data)
         });
-
-        if (response.ok) {
-            closeModal();
-            loadSection(currentSection);
-        } else {
-            const errorData = await response.json();
-            alert('Ошибка при сохранении: ' + JSON.stringify(errorData));
-        }
+        closeModal();
+        loadSection(currentSection);
     };
 
-    async function deleteItem(id) {
-        if (confirm('Удалить эту запись?')) {
-            await fetch(`/api/${currentSection}/${id}/`, {
-                method: 'DELETE',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            });
-            loadSection(currentSection);
-        }
-    }
+    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
 
     loadSection('events');
 </script>
-
 </body>
 </html>

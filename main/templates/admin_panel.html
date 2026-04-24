@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Панель управления | Новый Стиль</title>
-    <!-- ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ КАЛЕНДАРЯ -->
+
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     
@@ -18,139 +18,40 @@
             --yellow: #ffd93d;
         }
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-            background: var(--gray);
-        }
+        body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; background: var(--gray); overflow: hidden; }
 
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-right: 2px solid var(--mint);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
+    
+        .sidebar { width: 280px; background: white; border-right: 2px solid var(--mint); display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .sidebar h2 { font-size: 18px; text-transform: uppercase; color: var(--dark); border-bottom: 2px solid var(--mint); padding-bottom: 15px; margin-bottom: 20px; }
+        .nav-btn { padding: 15px; margin-bottom: 10px; border: none; background: none; text-align: left; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        .nav-btn:hover, .nav-btn.active { background: var(--mint); color: var(--dark); }
 
-        .sidebar h2 {
-            font-size: 18px;
-            text-transform: uppercase;
-            color: var(--dark);
-            border-bottom: 2px solid var(--mint);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
 
-        .nav-btn {
-            padding: 15px;
-            margin-bottom: 10px;
-            border: none;
-            background: none;
-            text-align: left;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 12px;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; box-sizing: border-box; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        
 
-        .nav-btn:hover, .nav-btn.active {
-            background: var(--mint);
-            color: var(--dark);
-        }
+        .admin-table { width: 100%; background: white; border-radius: 20px; border-collapse: collapse; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .admin-table th { background: var(--mint); padding: 15px; text-align: left; font-size: 13px; text-transform: uppercase; }
+        .admin-table td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; }
 
-        .main-content {
-            flex: 1;
-            padding: 40px;
-            overflow-y: auto;
-        }
+        .status-badge { padding: 5px 10px; border-radius: 6px; color: white; font-size: 11px; font-weight: bold; text-transform: uppercase; }
 
-        .header-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
 
-        .admin-table {
-            width: 100%;
-            background: white;
-            border-radius: 20px;
-            border-collapse: collapse;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        }
-
-        .admin-table th {
-            background: var(--mint);
-            padding: 15px;
-            text-align: left;
-            font-size: 14px;
-        }
-
-        .admin-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 6px;
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 50px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .btn-add { background: var(--mint); color: var(--dark); }
+        .btn { padding: 10px 20px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        .btn-add { background: var(--mint); color: var(--dark); font-size: 14px; }
         .btn-edit { background: var(--blue); color: var(--dark); margin-right: 5px; }
         .btn-delete { background: var(--pink); color: white; }
-        .btn-approve { background: #2ec4b6; color: white; margin-right: 5px; }
-        .btn-reject { background: var(--pink); color: white; }
+        .btn-approve { background: #2ec4b6; color: white; }
 
-        .modal-overlay {
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            z-index: 1000; 
-            justify-content: center; 
-            align-items: center;
-            backdrop-filter: blur(4px);
-        }
-        
-        .modal-card {
-            background: white; 
-            width: 500px; 
-            padding: 30px; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
+  
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-card { background: white; width: 500px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box;
-        }
-
-        #calendar-container { background: white; padding: 20px; border-radius: 15px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; outline: none; }
+        
+        #calendar { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -159,8 +60,9 @@
     <h2>Админ-панель</h2>
     <button class="nav-btn active" onclick="loadSection('events', this)">🎭 Спектакли</button>
     <button class="nav-btn" onclick="loadSection('tariffs', this)">💰 Тарифы</button>
+    <button class="nav-btn" onclick="loadSection('entertainment', this)">🔥 Шоу и Программы</button>
     <button class="nav-btn" onclick="loadSection('applications', this)">📩 Заявки</button>
-    <button class="nav-btn" onclick="loadSection('home', this)">🏠 Главная и Контакты</button>
+    <button class="nav-btn" onclick="loadSection('home', this)">🏠 Инфо и Контакты</button>
     <button class="nav-btn" onclick="loadSection('calendar', this)">📅 Календарь</button>
     <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
     <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
@@ -171,10 +73,7 @@
         <h1 id="section-title">Спектакли</h1>
         <button class="btn btn-add" id="add-btn" onclick="openCreateModal()">+ Добавить запись</button>
     </div>
-
-    <div id="content-area">
-        <!-- Контент -->
-    </div>
+    <div id="content-area"></div>
 </div>
 
 <div id="modal-overlay" class="modal-overlay">
@@ -195,98 +94,87 @@
     let currentSection = 'events';
 
     const schema = {
-        'home': [
-            { name: 'welcome_text', label: 'Заголовок приветствия', type: 'text' },
-            { name: 'subtitle', label: 'Описание', type: 'textarea' },
-            { name: 'phone', label: 'Телефон', type: 'text' },
-            { name: 'email', label: 'Email', type: 'text' },
-            { name: 'address', label: 'Адрес', type: 'text' }
-        ],
         'events': [
-            { name: 'title', label: 'Название', type: 'text' },
-            { name: 'date', label: 'Дата (ГГГГ-ММ-ДДTЧЧ:ММ)', type: 'text' },
+            { name: 'title', label: 'Название спектакля', type: 'text' },
+            { name: 'image', label: 'Обложка (картинка)', type: 'file' },
+            { name: 'price', label: 'Цена от', type: 'number' },
+            { name: 'date', label: 'Дата и время (ГГГГ-ММ-ДДTЧЧ:ММ)', type: 'text' },
             { name: 'location', label: 'Локация', type: 'text' },
-            { name: 'price', label: 'Цена', type: 'number' },
-            { name: 'is_active', label: 'Активен', type: 'checkbox' }
+            { name: 'short_description', label: 'Краткое описание', type: 'text' },
+            { name: 'description', label: 'Полное описание', type: 'textarea' }
         ],
         'tariffs': [
-            { name: 'category', label: 'Категория', type: 'select', options: [{value:'birthday', label:'День рождения'}, {value:'graduation', label:'Выпускной'}, {value:'spectacle', label:'Спектакль'}]},
-            { name: 'name', label: 'Название', type: 'text' },
+            { name: 'category', label: 'Категория', type: 'select', options: [{value:'birthday', label:'День рождения'}, {value:'graduation', label:'Выпускной'}]},
+            { name: 'name', label: 'Имя тарифа', type: 'text' },
+            { name: 'duration', label: 'Длительность (напр: НА 3 ЧАСА)', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
-            { name: 'features_list', label: 'Услуги (через Enter)', type: 'textarea' }
+            { name: 'image', label: 'Фото тарифа', type: 'file' },
+            { name: 'features_list', label: 'Список услуг (через Enter)', type: 'textarea' }
+        ],
+        'entertainment': [
+            { name: 'category', label: 'Тип', type: 'select', options: [{value:'show', label:'Шоу-программа'}, {value:'program', label:'Программа'}]},
+            { name: 'title', label: 'Название', type: 'text' },
+            { name: 'description', label: 'Описание', type: 'textarea' },
+            { name: 'image', label: 'Картинка', type: 'file' }
+        ],
+        'home': [
+            { name: 'welcome_text', label: 'Заголовок на главной', type: 'text' },
+            { name: 'phone', label: 'Телефон', type: 'text' },
+            { name: 'address', label: 'Адрес', type: 'text' },
+            { name: 'email', label: 'Email', type: 'text' },
+            { name: 'birthday_info', label: 'Общая инфо под тарифами (ДР)', type: 'textarea' }
         ],
         'applications': [
-            { name: 'status', label: 'Статус', type: 'select', options: [{value:'pending', label:'Ожидание'}, {value:'approved', label:'Одобрено'}, {value:'rejected', label:'Отклонено'}]}
+            { name: 'status', label: 'Изменить статус', type: 'select', options: [{value:'pending', label:'Ожидание'}, {value:'approved', label:'Одобрено'}, {value:'rejected', label:'Отклонено'}]}
         ]
     };
 
+
     async function loadSection(section, btn) {
         currentSection = section;
-        const contentArea = document.getElementById('content-area');
-        const addBtn = document.getElementById('add-btn');
-        const titleEl = document.getElementById('section-title');
-
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
 
-        const titles = { 'events':'🎭 Спектакли', 'tariffs':'💰 Тарифы', 'applications':'📩 Заявки', 'home':'🏠 Контакты', 'calendar':'📅 Календарь' };
+        const titleEl = document.getElementById('section-title');
+        const addBtn = document.getElementById('add-btn');
+        const titles = { 'events':'🎭 Спектакли', 'tariffs':'💰 Тарифы', 'entertainment':'🔥 Шоу и Программы', 'applications':'📩 Заявки', 'home':'🏠 Инфо и Контакты', 'calendar':'📅 Календарь' };
+        
         titleEl.innerText = titles[section];
-        addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
+        addBtn.style.display = (['events', 'tariffs', 'entertainment'].includes(section)) ? 'block' : 'none';
 
         if (section === 'calendar') {
-            contentArea.innerHTML = '<div id="calendar-container"><div id="calendar"></div></div>';
-            const calendarEl = document.getElementById('calendar');
-            const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
+            document.getElementById('content-area').innerHTML = '<div id="calendar"></div>';
+            new FullCalendar.Calendar(document.getElementById('calendar'), {
                 locale: 'ru',
-                firstDay: 1,
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-                events: '/api/calendar-data/'
-            });
-            calendar.render();
+                events: '/api/calendar-data/',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }
+            }).render();
             return;
         }
 
-        contentArea.innerHTML = '<p>Загрузка...</p>';
+        document.getElementById('content-area').innerHTML = '<p>Загрузка данных...</p>';
         const response = await fetch(`/api/${section}/`);
         const data = await response.json();
 
-        if (section === 'home') renderHomeSection(data);
-        else renderTable(data);
+        if (section === 'home') renderHomeView(data);
+        else renderTableView(data);
     }
 
-    function renderHomeSection(data) {
-        const item = Array.isArray(data) ? data[0] : data;
-        if (!item) {
-            document.getElementById('content-area').innerHTML = '<p>Данные не созданы.</p>';
-            return;
-        }
-        document.getElementById('content-area').innerHTML = `
-            <div style="background: white; padding: 30px; border-radius: 20px; border: 2px solid var(--mint);">
-                <h2>${item.welcome_text}</h2>
-                <p>📍 ${item.address}</p>
-                <p>📞 ${item.phone}</p>
-                <p>✉️ ${item.email}</p>
-                <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать контакты</button>
-            </div>`;
-    }
 
-    function renderTable(data) {
-        const contentArea = document.getElementById('content-area');
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-            contentArea.innerHTML = '<p>Нет данных</p>';
-            return;
-        }
+    function renderTableView(data) {
+        const area = document.getElementById('content-area');
         const items = Array.isArray(data) ? data : [data];
-        let keys = currentSection === 'applications' ? ['status', 'full_name', 'phone', 'event_date', 'category'] : ['id', 'title', 'name', 'price', 'category'];
+        if (items.length === 0 || !items[0].id) { area.innerHTML = '<p>Нет данных</p>'; return; }
+
+        let keys = currentSection === 'applications' ? ['status', 'full_name', 'phone', 'event_date'] : ['id', 'title', 'name', 'category', 'price'];
         keys = keys.filter(k => items[0].hasOwnProperty(k) || k === 'status');
 
         let html = '<table class="admin-table"><thead><tr>';
-        keys.forEach(k => html += `<th>${k.toUpperCase()}</th>`);
+        keys.forEach(k => html += `<th>${k}</th>`);
         html += '<th>ДЕЙСТВИЯ</th></tr></thead><tbody>';
 
         items.forEach(item => {
-            html += `<tr>`;
+            html += '<tr>';
             keys.forEach(k => {
                 let val = item[k] || '-';
                 if (k === 'status') {
@@ -295,48 +183,39 @@
                 }
                 html += `<td>${val}</td>`;
             });
-            let actions = '';
-            if (currentSection === 'applications') {
-                if (item.status === 'pending') {
-                    actions += `<button class="btn btn-approve" onclick="updateAppStatus(${item.id}, 'approved')">Одобрить</button>`;
-                    actions += `<button class="btn btn-reject" onclick="updateAppStatus(${item.id}, 'rejected')">Отказ</button>`;
-                }
-            } else {
-                actions += `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Edit</button>`;
-                actions += `<button class="btn btn-delete" onclick="deleteItem(${item.id})">Del</button>`;
+            html += `<td>`;
+            if (currentSection === 'applications' && item.status === 'pending') {
+                html += `<button class="btn btn-approve" onclick="updateAppStatus(${item.id}, 'approved')">Одобрить</button> `;
             }
-            html += `<td>${actions}</td></tr>`;
+            html += `<button class="btn btn-edit" onclick=\'openEditModal(${JSON.stringify(item)})\'>Edit</button>`;
+            html += `<button class="btn btn-delete" onclick="deleteItem(${item.id})">Del</button></td></tr>`;
         });
-        contentArea.innerHTML = html + '</tbody></table>';
+        area.innerHTML = html + '</tbody></table>';
     }
 
-    async function updateAppStatus(id, newStatus) {
-        await fetch(`/api/applications/${id}/`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({ status: newStatus })
-        });
-        loadSection('applications');
+
+    function renderHomeView(data) {
+        const item = Array.isArray(data) ? data[0] : data;
+        document.getElementById('content-area').innerHTML = `
+            <div style="background: white; padding: 40px; border-radius: 20px; border: 2px solid var(--mint);">
+                <h2>${item.welcome_text || 'Заголовок не задан'}</h2>
+                <p><b>Телефон:</b> ${item.phone}</p>
+                <p><b>Адрес:</b> ${item.address}</p>
+                <p><b>Инфо под тарифами:</b> ${item.birthday_info ? 'Заполнено' : 'Пусто'}</p>
+                <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})' style="padding: 15px 30px; font-size:14px">Редактировать всё</button>
+            </div>`;
     }
 
-    async function deleteItem(id) {
-        if (!confirm('Удалить?')) return;
-        await fetch(`/api/${currentSection}/${id}/`, {
-            method: 'DELETE',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-        });
-        loadSection(currentSection);
-    }
 
     function openCreateModal() {
-        document.getElementById('modal-title').innerText = "Добавить";
+        document.getElementById('modal-title').innerText = "Добавить новую запись";
         document.getElementById('field-id').value = '';
         renderFields();
         document.getElementById('modal-overlay').style.display = 'flex';
     }
 
     function openEditModal(item) {
-        document.getElementById('modal-title').innerText = "Изменить";
+        document.getElementById('modal-title').innerText = "Изменить запись";
         document.getElementById('field-id').value = item.id;
         renderFields(item);
         document.getElementById('modal-overlay').style.display = 'flex';
@@ -346,42 +225,69 @@
         const container = document.getElementById('form-fields');
         container.innerHTML = '';
         schema[currentSection].forEach(f => {
-            let val = item ? item[f.name] : '';
+            let val = item ? (item[f.name] || '') : '';
             let html = `<div class="form-group"><label>${f.label}</label>`;
             if (f.type === 'select') {
                 html += `<select name="${f.name}">${f.options.map(o => `<option value="${o.value}" ${val===o.value?'selected':''}>${o.label}</option>`).join('')}</select>`;
             } else if (f.type === 'textarea') {
-                html += `<textarea name="${f.name}">${val}</textarea>`;
-            } else if (f.type === 'checkbox') {
-                html += `<input type="checkbox" name="${f.name}" ${val?'checked':''} style="width:auto">`;
+                html += `<textarea name="${f.name}" rows="5">${val}</textarea>`;
+            } else if (f.type === 'file') {
+                html += `<input type="file" name="${f.name}">`;
             } else {
                 html += `<input type="${f.type}" name="${f.name}" value="${val}">`;
             }
-            container.innerHTML += html + `</div>`;
+            container.innerHTML += html + '</div>';
         });
     }
 
-    document.getElementById('admin-form').onsubmit = async (e) => {
+
+    document.getElementById('admin-form').onsubmit = async function(e) {
         e.preventDefault();
         const id = document.getElementById('field-id').value;
-        const formData = new FormData(e.target);
-        const data = {};
-        formData.forEach((v, k) => data[k] = v);
-        
+        const formData = new FormData(this); // Используем FormData
         const method = id ? 'PUT' : 'POST';
         const url = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`;
 
-        await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify(data)
-        });
-        closeModal();
-        loadSection(currentSection);
+        try {
+            const resp = await fetch(url, {
+                method: method,
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' } // НЕ ставим Content-Type!
+            });
+
+            if (resp.ok) {
+                closeModal();
+                loadSection(currentSection);
+            } else {
+                const err = await resp.json();
+                alert('Ошибка: ' + JSON.stringify(err));
+            }
+        } catch (e) {
+            alert('Ошибка сети или сервера.');
+        }
     };
 
-    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+    async function updateAppStatus(id, status) {
+        await fetch(`/api/applications/${id}/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ status })
+        });
+        loadSection('applications');
+    }
 
+    async function deleteItem(id) {
+        if (!confirm('Удалить навсегда?')) return;
+        await fetch(`/api/${currentSection}/${id}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        });
+        loadSection(currentSection);
+    }
+
+    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+    
+ 
     loadSection('events');
 </script>
 </body>

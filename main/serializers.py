@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import HomePage, Event, Service, Tariff, Application
+from .models import HomePage, Event, Service, Tariff, Application, EntertainmentItem
 
 class HomePageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,6 +19,12 @@ class ServiceSerializer(serializers.ModelSerializer):
 class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
+        fields = '__all__'
+
+
+class EntertainmentItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EntertainmentItem
         fields = '__all__'
 
 class ApplicationSerializer(serializers.ModelSerializer):

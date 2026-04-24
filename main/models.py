@@ -9,11 +9,14 @@ class HomePage(models.Model):
     email = models.EmailField(blank=True, verbose_name="Email для связи")
     address = models.CharField(max_length=500, blank=True, verbose_name="Адрес театра")
 
+    birthday_info = models.TextField(blank=True, verbose_name="Общая информация о Днях Рождения (внизу страницы)")
+
     def __str__(self):
         return "Настройки главной страницы и контактов"
 
     class Meta:
         verbose_name = "Главная страница и контакты"
+
 
 class Event(models.Model):
     title = models.CharField(max_length=200, verbose_name="Название")
@@ -32,11 +35,31 @@ class Event(models.Model):
         verbose_name = "Спектакль"
         verbose_name_plural = "Спектакли"
 
+
+class EntertainmentItem(models.Model):
+    TYPE_CHOICES = [
+        ('show', 'Шоу-программа'),
+        ('program', 'Интерактивная программа'),
+    ]
+    category = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="Тип")
+    title = models.CharField(max_length=200, verbose_name="Название")
+    description = models.TextField(verbose_name="Описание")
+    image = models.ImageField(upload_to='entertainment/', blank=True, null=True, verbose_name="Картинка")
+
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.title}"
+
+    class Meta:
+        verbose_name = "Шоу или Программа"
+        verbose_name_plural = "Шоу и Программы"
+
+
 class Service(models.Model):
     title = models.CharField(max_length=200)
     
     def __str__(self):
         return self.title
+
 
 class Tariff(models.Model):
     CATEGORY_CHOICES = [
@@ -47,10 +70,15 @@ class Tariff(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, verbose_name="Категория")
     name = models.CharField(max_length=100, verbose_name="Название тарифа")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
-    features_list = models.TextField(verbose_name="Список услуг")
+    
+    duration = models.CharField(max_length=100, blank=True, verbose_name="Длительность (напр. НА 3 ЧАСА)")
+    
+    image = models.ImageField(upload_to='tariffs/', blank=True, null=True, verbose_name="Картинка тарифа")
+    features_list = models.TextField(verbose_name="Список услуг (каждая с новой строки)")
 
     def __str__(self):
         return f"{self.get_category_display()} — {self.name} ({self.price} ₽)"
+
 
 class Application(models.Model):
     CATEGORY_CHOICES = [
@@ -73,9 +101,11 @@ class Application(models.Model):
     event_date = models.DateField(verbose_name="Дата события", null=True, blank=True)
     event_time = models.TimeField(verbose_name="Время события", null=True, blank=True)
     
-   
     tariff = models.ForeignKey(Tariff, on_delete=models.CASCADE, verbose_name="Выбранный тариф", null=True, blank=True)
     
+    chosen_show = models.CharField(max_length=255, blank=True, verbose_name="Выбранное шоу")
+    chosen_program = models.CharField(max_length=255, blank=True, verbose_name="Выбранная программа")
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     
     status = models.CharField(

@@ -2,38 +2,313 @@
 {% load static %}
 
 {% block content %}
-<div class="afisha-container">
-    <div class="page-header">
-        <h1 class="page-title">Дни Рождения</h1>
-        <p class="page-subtitle">Устройте незабываемый праздник в стенах нашего театра</p>
-    </div>
+<style>
 
-    <div class="events-grid">
-        {% for item in packages %}
-        <div class="event-card">
-            <div class="event-image" style="background-color: #e8f5e9; display: flex; align-items: center; justify-content: center; font-size: 50px;">
-                🎂
-                <div class="event-price">{{ item.price }} ₽</div>
-            </div>
+    .birthday-section {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 60px 20px;
+    }
 
-            <div class="event-info">
-                <div>
-                    <h2 class="event-title">{{ item.title }}</h2>
-                    <ul style="color: #666; margin-bottom: 20px; padding-left: 20px;">
-                        {% for feature in item.features %}
-                        <li>{{ feature }}</li>
-                        {% endfor %}
-                    </ul>
+    .big-order-container {
+        text-align: center;
+        margin: 50px 0 100px; /* Отступы сверху и снизу */
+        width: 100%;
+    }
+
+    
+    .btn-huge {
+        display: inline-block;
+        background: linear-gradient(135deg, #ff8b94 0%, #ff7681 100%); /* Яркий розовый градиент */
+        color: white;
+        padding: 25px 80px; /* Очень большие отступы */
+        font-size: 24px; /* Крупный шрифт */
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        border-radius: 100px; /* Закругленная форма "батон" */
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 15px 35px rgba(255, 139, 148, 0.4); /* Мягкая розовая тень */
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+    
+    .btn-huge:hover {
+        transform: scale(1.05) translateY(-5px); /* Увеличивается и приподнимается */
+        box-shadow: 0 20px 45px rgba(255, 139, 148, 0.6);
+        filter: brightness(1.1);
+    }
+
+    
+    .btn-huge {
+        animation: pulse-animation 2s infinite;
+    }
+
+    @keyframes pulse-animation {
+        0% { box-shadow: 0 0 0 0px rgba(255, 139, 148, 0.7); }
+        70% { box-shadow: 0 0 0 20px rgba(255, 139, 148, 0); }
+        100% { box-shadow: 0 0 0 0px rgba(255, 139, 148, 0); }
+    }
+    .section-title {
+        text-align: center;
+        font-size: 32px;
+        text-transform: uppercase;
+        margin-bottom: 40px;
+        color: #1a1a1a;
+        letter-spacing: 1px;
+        font-weight: 800;
+    }
+
+
+    .items-row {
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+        flex-wrap: wrap;
+        margin-bottom: 60px;
+    }
+
+
+    .item-card {
+        background: white;
+        border-radius: 25px;
+        width: 350px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        overflow: hidden;
+        transition: 0.3s ease;
+        border: 1px solid #eee;
+    }
+
+    .item-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+    }
+
+
+    .package-header {
+        padding: 20px;
+        text-align: center;
+        color: white;
+        font-weight: 800;
+        font-size: 18px;
+        text-transform: uppercase;
+    }
+
+
+    .item-card:nth-child(1) .package-header { background: #c2d546; } /* Салатовый */
+    .item-card:nth-child(2) .package-header { background: #a31d3d; } /* Бордовый */
+    .item-card:nth-child(3) .package-header { background: #f3922b; } /* Оранжевый */
+
+    .item-img-container {
+        width: 100%;
+        height: 220px;
+        background: #f0f0f0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .item-img-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+
+    .item-meta {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 25px;
+        background: #fafafa;
+        border-bottom: 1px solid #eee;
+    }
+
+    .meta-box {
+        line-height: 1.3;
+    }
+
+    .meta-label {
+        font-size: 10px;
+        color: #999;
+        font-weight: bold;
+        display: block;
+        text-transform: uppercase;
+    }
+
+    .meta-text {
+        font-size: 14px;
+        font-weight: 800;
+        color: #333;
+    }
+
+
+    .item-content {
+        padding: 25px;
+        flex-grow: 1;
+    }
+
+    .item-content ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .item-content li {
+        font-size: 14px;
+        margin-bottom: 10px;
+        padding-left: 20px;
+        position: relative;
+        color: #555;
+    }
+
+    .item-content li::before {
+        content: "•";
+        position: absolute;
+        left: 0;
+        color: #1a1a1a;
+        font-weight: bold;
+    }
+
+    .item-description {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+
+    .item-footer {
+        padding: 25px;
+        text-align: center;
+    }
+
+    .btn-order-package {
+        width: 100%;
+        padding: 16px;
+        border-radius: 50px;
+        border: none;
+        color: white;
+        font-weight: bold;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: 0.3s;
+        font-size: 14px;
+    }
+
+    .item-card:nth-child(1) .btn-order-package { background: #c2d546; }
+    .item-card:nth-child(2) .btn-order-package { background: #a31d3d; }
+    .item-card:nth-child(3) .btn-order-package { background: #f3922b; }
+
+    .btn-order-package:hover {
+        opacity: 0.9;
+        transform: scale(1.02);
+    }
+
+
+    .info-card {
+        background: white;
+        padding: 40px;
+        border-radius: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        line-height: 1.8;
+        color: #444;
+        border-left: 12px solid #a8e6cf;
+        font-size: 16px;
+    }
+</style>
+
+<div class="birthday-section">
+
+
+    <h1 class="section-title">Пакеты Дня Рождения</h1>
+    <div class="items-row">
+        {% for t in tariffs %}
+        <div class="item-card">
+            <div class="package-header">«{{ t.name }}»</div>
+            <div class="item-img-container">
+                {% if t.image %}
+                    <img src="{{ t.image.url }}" alt="{{ t.name }}">
+                {% else %}
+                    <div style="font-size:60px;">🎂</div>
+                {% endif %}
+            </div>
+            <div class="item-meta">
+                <div class="meta-box">
+                    <span class="meta-label">🕒 ПРАЗДНИК</span>
+                    <span class="meta-text">{{ t.duration|upper }}</span>
                 </div>
-                
-                <div class="event-footer">
-                    <button class="btn-buy" onclick="openModal('День Рождения')">Заказать праздник</button>
+                <div class="meta-box" style="text-align: right;">
+                    <span class="meta-label">СТОИМОСТЬ</span>
+                    <span class="meta-text">от {{ t.price }} ₽</span>
                 </div>
             </div>
+            <div class="item-content">
+                <ul>
+                    {% for f in t.features_list.splitlines %}
+                        {% if f.strip %}<li>{{ f.strip }}</li>{% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            
         </div>
         {% empty %}
-        <p>Тарифы пока не добавлены.</p>
+        <p style="text-align: center; width: 100%; color: #999;">Тарифы еще не добавлены.</p>
         {% endfor %}
     </div>
+
+    <div class="big-order-container">
+        <button class="btn-huge" onclick="openFinalForm('День Рождения')">
+            ЗАКАЗАТЬ ПРАЗДНИК
+        </button>
+    </div>
+
+    {% if shows %}
+    <h2 class="section-title">Наши Шоу-программы</h2>
+    <div class="items-row">
+        {% for s in shows %}
+        <div class="item-card" style="width: 300px; min-height: auto;">
+            <div class="item-img-container" style="height: 200px;">
+                {% if s.image %}<img src="{{ s.image.url }}" alt="{{ s.title }}">{% endif %}
+            </div>
+            <div class="item-content" style="text-align: center; padding-bottom: 30px;">
+                <h3 style="margin: 0 0 15px 0; color: #a31d3d; font-size: 20px;">{{ s.title }}</h3>
+                <p class="item-description">{{ s.description }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+
+    {% if programs %}
+    <h2 class="section-title">Интерактивные программы</h2>
+    <div class="items-row">
+        {% for p in programs %}
+        <div class="item-card" style="width: 300px; min-height: auto;">
+            <div class="item-img-container" style="height: 200px;">
+                {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.title }}">{% endif %}
+            </div>
+            <div class="item-content" style="text-align: center; padding-bottom: 30px;">
+                <h3 style="margin: 0 0 15px 0; color: #2ec4b6; font-size: 20px;">{{ p.title }}</h3>
+                <p class="item-description">{{ p.description }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+
+    {% if birthday_info %}
+    <h2 class="section-title">Полезно знать</h2>
+    <div class="info-card">
+        <div style="white-space: pre-wrap;">{{ birthday_info }}</div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}

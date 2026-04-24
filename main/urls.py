@@ -8,6 +8,7 @@ router.register(r'events', views.EventViewSet)
 router.register(r'services', views.ServiceViewSet)
 router.register(r'tariffs', views.TariffViewSet)
 router.register(r'applications', views.ApplicationViewSet)
+router.register(r'entertainment', views.EntertainmentItemViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),

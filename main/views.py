@@ -2,10 +2,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .models import HomePage, Event, Service, Tariff, Application
+from .models import HomePage, Event, Service, Tariff, Application, EntertainmentItem
 from .serializers import (
     HomePageSerializer, EventSerializer, ServiceSerializer, 
-    TariffSerializer, ApplicationSerializer
+    TariffSerializer, ApplicationSerializer, EntertainmentItemSerializer
 )
 import datetime
 from django.http import JsonResponse
@@ -32,22 +32,22 @@ def event_detail(request, pk):
     return render(request, 'event_detail.html', {'event': event})
 
 def birthday_page(request):
-    tariffs = Tariff.objects.filter(category='birthday')
-    packages = [{
-        'title': t.name,
-        'price': t.price,
-        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
-    } for t in tariffs]
-    return render(request, 'birthdays.html', {'packages': packages})
+    home_data = HomePage.objects.first()
+    tariffs = Tariff.objects.filter(category='birthday').order_by('price')
+    
+    shows = EntertainmentItem.objects.filter(category='show')
+    programs = EntertainmentItem.objects.filter(category='program')
+    
+    return render(request, 'birthdays.html', {
+        'tariffs': tariffs,
+        'shows': shows,
+        'programs': programs,
+        'birthday_info': home_data.birthday_info if home_data else ""
+    })
 
 def graduation_view(request):
-    tariffs = Tariff.objects.filter(category='graduation')
-    packages = [{
-        'title': t.name,
-        'price': t.price,
-        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
-    } for t in tariffs]
-    return render(request, 'graduation.html', {'packages': packages})
+    tariffs = Tariff.objects.filter(category='graduation').order_by('price')
+    return render(request, 'graduation.html', {'tariffs': tariffs})
 
 def admin_panel(request):
     return render(request, 'admin_panel.html')
@@ -68,6 +68,10 @@ class ServiceViewSet(viewsets.ModelViewSet):
 class TariffViewSet(viewsets.ModelViewSet):
     queryset = Tariff.objects.all()
     serializer_class = TariffSerializer
+
+class EntertainmentItemViewSet(viewsets.ModelViewSet):
+    queryset = EntertainmentItem.objects.all()
+    serializer_class = EntertainmentItemSerializer
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all()

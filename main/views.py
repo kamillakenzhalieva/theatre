@@ -12,7 +12,12 @@ from django.http import JsonResponse
 
 def index(request):
     home_data = HomePage.objects.first() 
-    return render(request, 'index.html', {'home': home_data})
+    context = {
+        'tariffs': Tariff.objects.all(),
+        'shows': EntertainmentItem.objects.filter(category='show'),
+        'programs': EntertainmentItem.objects.filter(category='program'),
+    }
+    return render(request, 'index.html', context)
 
 def about(request):
     home_data = HomePage.objects.first()
@@ -89,15 +94,10 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if data.get('category') in cat_map:
             data['category'] = cat_map[data.get('category')]
 
-        if data.get('category') != 'spectacle' and 'selection' in data:
-            clean_name = data.get('selection').replace('Тариф: ', '').replace('Пакет: ', '')
-            tariff = Tariff.objects.filter(name__icontains=clean_name).first()
-            if tariff:
-                data['tariff'] = tariff.id
-
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        
         if request.accepted_renderer.format == 'html' and 'HTTP_X_REQUESTED_WITH' not in request.META:
             return redirect('home')
         return Response(serializer.data, status=status.HTTP_201_CREATED)

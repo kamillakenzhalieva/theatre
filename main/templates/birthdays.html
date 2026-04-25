@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="birthday-section" style="max-width: 1200px; margin: 0 auto; padding: 60px 20px;">
+<div class="birthday-section">
 
     <h1 class="section-title">Пакеты Дня Рождения</h1>
     <div class="items-row">
@@ -39,7 +39,7 @@
         {% endfor %}
     </div>
 
-    <div class="big-order-container" style="text-align: center; margin: 50px 0 100px;">
+    <div class="big-order-container">
         <button class="btn-huge" onclick="openFinalForm('День Рождения')">
             ЗАКАЗАТЬ ПРАЗДНИК
         </button>
@@ -55,7 +55,7 @@
             </div>
             <div class="item-content" style="text-align: center; padding-bottom: 30px;">
                 <h3 style="margin: 0 0 15px 0; color: #a31d3d; font-size: 20px;">{{ s.title }}</h3>
-                <p style="color: #666; font-size: 14px; line-height: 1.6;">{{ s.description }}</p>
+                <p class="item-description">{{ s.description }}</p>
             </div>
         </div>
         {% endfor %}
@@ -72,7 +72,7 @@
             </div>
             <div class="item-content" style="text-align: center; padding-bottom: 30px;">
                 <h3 style="margin: 0 0 15px 0; color: #2ec4b6; font-size: 20px;">{{ p.title }}</h3>
-                <p style="color: #666; font-size: 14px; line-height: 1.6;">{{ p.description }}</p>
+                <p class="item-description">{{ p.description }}</p>
             </div>
         </div>
         {% endfor %}

@@ -100,19 +100,13 @@ class Application(models.Model):
     
     tariff = models.ForeignKey(Tariff, on_delete=models.SET_NULL, verbose_name="Выбранный тариф", null=True, blank=True)
     
-    entertainment = models.ForeignKey(EntertainmentItem, on_delete=models.SET_NULL, verbose_name="Шоу/Программа", null=True, blank=True)
+    chosen_show = models.ForeignKey(EntertainmentItem, on_delete=models.SET_NULL, verbose_name="Шоу", null=True, blank=True, related_name="apps_show")
+    chosen_program = models.ForeignKey(EntertainmentItem, on_delete=models.SET_NULL, verbose_name="Программа", null=True, blank=True, related_name="apps_program")
     
     guests_count = models.PositiveIntegerField(verbose_name="Кол-во гостей", default=1, blank=True, null=True)
     message = models.TextField(verbose_name="Комментарий", blank=True, null=True)
-
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
-    
-    status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
-        default='pending', 
-        verbose_name="Статус"
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Статус")
 
     def __str__(self):
         return f"{self.full_name} — {self.get_category_display()} ({self.status})"

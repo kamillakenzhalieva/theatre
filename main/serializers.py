@@ -31,9 +31,9 @@ class EntertainmentItemSerializer(serializers.ModelSerializer):
 
 class ApplicationSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format="%d.%m.%Y %H:%M", read_only=True)
-    
     tariff_name = serializers.ReadOnlyField(source='tariff.name')
-    entertainment_title = serializers.ReadOnlyField(source='entertainment.title')
+    show_title = serializers.ReadOnlyField(source='chosen_show.title')
+    program_title = serializers.ReadOnlyField(source='chosen_program.title')
 
     class Meta:
         model = Application
@@ -48,7 +48,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'event_time': {'required': False, 'allow_null': True},
             'guests_count': {'required': False, 'allow_null': True},
             'tariff': {'required': False, 'allow_null': True},
-            'entertainment': {'required': False, 'allow_null': True},
+            'chosen_show': {'required': False, 'allow_null': True},
+            'chosen_program': {'required': False, 'allow_null': True},
             'message': {'required': False, 'allow_blank': True, 'allow_null': True},
             'status': {'required': False}
         }

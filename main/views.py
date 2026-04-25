@@ -10,7 +10,6 @@ from .serializers import (
 import datetime
 from django.http import JsonResponse
 
-
 def index(request):
     home_data = HomePage.objects.first() 
     return render(request, 'index.html', {'home': home_data})
@@ -34,6 +33,8 @@ def event_detail(request, pk):
 def birthday_page(request):
     home_data = HomePage.objects.first()
     tariffs = Tariff.objects.filter(category='birthday').order_by('price')
+    for t in tariffs:
+        t.features = [f.strip() for f in t.features_list.split('\n') if f.strip()]
     
     shows = EntertainmentItem.objects.filter(category='show')
     programs = EntertainmentItem.objects.filter(category='program')
@@ -47,11 +48,12 @@ def birthday_page(request):
 
 def graduation_view(request):
     tariffs = Tariff.objects.filter(category='graduation').order_by('price')
-    return render(request, 'graduation.html', {'tariffs': tariffs})
+    for t in tariffs:
+        t.features = [f.strip() for f in t.features_list.split('\n') if f.strip()]
+    return render(request, 'graduation.html', {'packages': tariffs})
 
 def admin_panel(request):
     return render(request, 'admin_panel.html')
-
 
 class HomePageViewSet(viewsets.ModelViewSet):
     queryset = HomePage.objects.all()
@@ -79,13 +81,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        
         cat_map = {
             'День Рождения': 'birthday',
             'Выпускной': 'graduation',
             'Спектакль': 'spectacle'
         }
-        
         if data.get('category') in cat_map:
             data['category'] = cat_map[data.get('category')]
 
@@ -98,16 +98,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        
         if request.accepted_renderer.format == 'html' and 'HTTP_X_REQUESTED_WITH' not in request.META:
             return redirect('home')
-            
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
 
 def calendar_events_api(request):
     data = []
-
     for ev in Event.objects.filter(is_active=True):
         data.append({
             'id': f"ev_{ev.id}",
@@ -120,16 +116,12 @@ def calendar_events_api(request):
                 'location': ev.location
             }
         })
-
     apps = Application.objects.filter(status='approved').exclude(event_date__isnull=True).exclude(event_time__isnull=True)
-    
     for ap in apps:
         start_dt = datetime.datetime.combine(ap.event_date, ap.event_time)
-        
         is_bday = ap.category == 'birthday'
         color = '#ff8b94' if is_bday else '#a8e6cf'
         icon = '🎂' if is_bday else '🎓'
-
         data.append({
             'id': f"ap_{ap.id}",
             'title': f"{icon} {ap.full_name}",
@@ -141,7 +133,6 @@ def calendar_events_api(request):
                 'tariff': ap.tariff.name if ap.tariff else 'Не указан'
             }
         })
-
     return JsonResponse(data, safe=False)
 
 def calendar_page_render(request):

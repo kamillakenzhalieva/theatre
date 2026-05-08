@@ -1,0 +1,237 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
+</head>
+
+    <header>
+        <div class="logo">Театр-праздник «Новый стиль»</div>
+        <nav>
+            <a href="{% url 'home' %}">Главная</a>
+            <a href="{% url 'afisha' %}">Афиша</a>
+            <a href="{% url 'spectacles_page' %}">Спектакли</a>
+            <a href="{% url 'birthdays' %}">День Рождения</a>
+            <a href="{% url 'graduation_page' %}">Выпускной</a>
+            <a href="{% url 'about' %}">Контакты</a>
+            <button class="btn-buy" onclick="openChoiceModal()" style="padding: 5px 15px; margin-left: 10px;">ЗАКАЗАТЬ</button>
+        </nav>
+    </header>
+    
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+    
+<div id="serviceChoiceModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header-mint">
+                <h2>Выберите услугу</h2>
+                <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <button type="button" class="choice-btn" onclick="openFinalForm('День Рождения')">День Рождения</button>
+                <button type="button" class="choice-btn" onclick="openFinalForm('Выпускной')">Выпускной</button>
+                <button type="button" class="choice-btn" onclick="openFinalForm('Спектакль')">Спектакль</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="orderFormModal" class="modal-overlay">
+        <div class="modal-card" style="width: 500px;"> 
+            <div class="modal-header-mint">
+                <h2 id="modalTitle">Оформление заявки</h2>
+                <span style="cursor:pointer; font-size:24px" onclick="closeAllModals()">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <form method="post" action="/api/applications/">
+                    {% csrf_token %}
+                    <input type="hidden" name="category" id="categoryInput">
+                    
+                    <div class="form-field">
+                        <label>ФИО заказчика</label>
+                        <input type="text" name="full_name" required>
+                    </div>
+
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Телефон</label>
+                            <input type="tel" name="phone" required placeholder="+7">
+                        </div>
+                        <div class="form-field" style="flex:1">
+                            <label>Email</label>
+                            <input type="email" name="email">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Возраст детей</label>
+                            <input type="text" name="age">
+                        </div>
+                        <div class="form-field" style="flex:1">
+                            <label id="dynamicLabel">Выбор</label>
+                            <select name="tariff" id="dynamicSelect" required>
+                                <option value="">-- Выберите --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="extraFields" style="display:none;">
+                        <div class="form-field">
+                            <label>Шоу-программа</label>
+                            <select name="show_program">
+                                <option value="">-- Не выбрано --</option>
+                                </select>
+                        </div>
+                        <div class="form-field">
+                            <label>Интерактив</label>
+                            <select name="interactive">
+                                <option value="">-- Не выбрано --</option>
+                                </select>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label>Адрес проведения</label>
+                        <input type="text" name="address">
+                    </div>
+
+                    <div style="display:flex; gap:10px">
+                        <div class="form-field" style="flex:1">
+                            <label>Дата</label>
+                            <input type="date" name="event_date" required>
+                        </div>
+                        <div class="form-field" style="flex:1">
+                            <label>Время</label>
+                            <input type="time" name="event_time" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit-order">ОТПРАВИТЬ ЗАЯВКУ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal-overlay" style="display:none;">
+        <div class="modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body" style="padding: 40px 20px;">
+                <div style="background-color: #64d7ac; width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h3 style="margin-bottom: 10px; font-size: 22px;">Спасибо!</h3>
+                <p style="color: #666; margin-bottom: 30px; line-height: 1.5;">Заявка принята! Администратор свяжется с вами в ближайшее время.</p>
+                <button type="button" class="btn-submit-order" onclick="closeAllModals()" style="background-color: #98ebcd; color: #1a1a1a; border: none; width: auto; padding: 12px 40px; border-radius: 25px; font-weight: bold; cursor: pointer;">ОТЛИЧНО</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openChoiceModal() {
+            document.getElementById('serviceChoiceModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+            document.body.style.overflow = 'auto'; 
+        }
+
+        async function openFinalForm(type) {
+            document.getElementById('serviceChoiceModal').style.display = 'none';
+            document.getElementById('orderFormModal').style.display = 'flex';
+            
+            document.getElementById('categoryInput').value = type;
+            document.getElementById('modalTitle').innerText = type.toUpperCase();
+            
+            const tariffSelect = document.getElementById('dynamicSelect');
+            const showSelect = document.querySelector('select[name="show_program"]');
+            const interSelect = document.querySelector('select[name="interactive"]');
+            const extra = document.getElementById('extraFields');
+
+            tariffSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+            try {
+                const response = await fetch(`/get-service-data/?category=${encodeURIComponent(type)}`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+
+                tariffSelect.innerHTML = '<option value="">-- Выберите --</option>';
+                if (showSelect) showSelect.innerHTML = '<option value="">-- Не выбрано --</option>';
+                if (interSelect) interSelect.innerHTML = '<option value="">-- Не выбрано --</option>';
+
+                if (type === 'Спектакль') {
+                    document.getElementById('dynamicLabel').innerText = 'ВЫБЕРИТЕ СПЕКТАКЛЬ';
+                    if (extra) extra.style.display = 'none';
+                } else {
+                    document.getElementById('dynamicLabel').innerText = 'ВЫБЕРИТЕ ТАРИФ';
+                    if (extra) extra.style.display = 'block';
+                }
+
+                if (data.tariffs) {
+                    data.tariffs.forEach(item => tariffSelect.add(new Option(item, item)));
+                }
+                
+                if (showSelect && data.shows) {
+                    data.shows.forEach(item => showSelect.add(new Option(item, item)));
+                }
+                
+                if (interSelect && data.interactives) {
+                    data.interactives.forEach(item => interSelect.add(new Option(item, item)));
+                }
+
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+                tariffSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            }
+        }
+
+        document.querySelector('#orderFormModal form').onsubmit = async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const category = document.getElementById('categoryInput').value;
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    document.getElementById('orderFormModal').style.display = 'none';
+                    
+                    document.getElementById('successModal').style.display = 'flex';
+                    
+                    this.reset();
+                } else {
+                    const errors = await response.json();
+                    console.error('Ошибка:', errors);
+                    alert('Произошла ошибка при валидации данных.');
+                }
+            } catch (error) {
+                console.error('Ошибка сети:', error);
+            }
+        };
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeAllModals();
+            }
+        };
+    </script>
+</body>
+</html>

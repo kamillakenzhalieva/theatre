@@ -12,23 +12,23 @@ from django.http import JsonResponse
 
 def index(request):
     home_data = HomePage.objects.first() 
-    return render(request, 'index.html', {'home': home_data})
+    return render(request, 'main/index.html', {'home': home_data})
 
 def about(request):
     home_data = HomePage.objects.first()
-    return render(request, 'about.html', {'home': home_data})
+    return render(request, 'main/about.html', {'home': home_data})
 
 def afisha(request):
     events = Event.objects.all()
-    return render(request, 'afisha.html', {'events': events})
+    return render(request, 'main/afisha.html', {'events': events})
 
 def spectacles_view(request):
     events = Event.objects.filter(is_active=True).order_by('date')
-    return render(request, 'spectacles.html', {'events': events})
+    return render(request, 'main/spectacles.html', {'events': events})
 
 def event_detail(request, pk):
     event = get_object_or_404(Event, pk=pk)
-    return render(request, 'event_detail.html', {'event': event})
+    return render(request, 'main/event_detail.html', {'event': event})
 
 def birthday_page(request):
     tariffs = Tariff.objects.filter(category='birthday')
@@ -40,7 +40,7 @@ def birthday_page(request):
     spectacles = Event.objects.filter(is_active=True)
     all_tariffs = Tariff.objects.all()
 
-    return render(request, 'birthdays.html', {
+    return render(request, 'main/birthdays.html', {
         'tariffs': tariffs,
         'all_tariffs': all_tariffs,
         'shows': shows,
@@ -60,7 +60,7 @@ def graduation_view(request):
     spectacles = Event.objects.filter(is_active=True)
     all_tariffs = Tariff.objects.all()
 
-    return render(request, 'graduation.html', {
+    return render(request, 'main/graduation.html', {
         'tariffs': tariffs,
         'all_tariffs': all_tariffs,
         'shows': shows,
@@ -71,7 +71,7 @@ def graduation_view(request):
     })
 
 def admin_panel(request):
-    return render(request, 'admin_panel.html')
+    return render(request, 'main/admin_panel.html')
 
 
 class HomePageViewSet(viewsets.ModelViewSet):
@@ -128,12 +128,13 @@ def calendar_events_api(request):
 
     for ev in Event.objects.filter(is_active=True):
         data.append({
-            'id': f"ev_{ev.id}",
+            'id': ev.id,
             'title': f"🎭 {ev.title}",
             'start': ev.date.isoformat(),
             'backgroundColor': '#a2d2ff', 
             'borderColor': '#7fb3e6',
             'extendedProps': {
+                'type': 'event',
                 'description': ev.short_description,
                 'location': ev.location
             }
@@ -149,12 +150,13 @@ def calendar_events_api(request):
         icon = '🎂' if is_bday else '🎓'
 
         data.append({
-            'id': f"ap_{ap.id}",
+            'id': ap.id,
             'title': f"{icon} {ap.full_name}",
             'start': start_dt.isoformat(),
             'backgroundColor': color,
             'borderColor': color,
             'extendedProps': {
+                'type': 'application',
                 'phone': ap.phone,
                 'tariff': ap.tariff.name if ap.tariff else 'Не указан'
             }
@@ -163,7 +165,7 @@ def calendar_events_api(request):
     return JsonResponse(data, safe=False)
 
 def calendar_page_render(request):
-    return render(request, 'calendar_view.html')
+    return render(request, 'main/calendar_view.html')
  
 def get_service_data(request):
     category_map = {

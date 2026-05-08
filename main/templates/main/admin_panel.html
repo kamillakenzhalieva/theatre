@@ -2,167 +2,41 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <title>Панель управления</title>
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <meta charset="UTF-8">
-    <title>Панель управления | Новый Стиль</title>
-    <style>
-        :root {
-            --mint: #a8e6cf;
-            --dark: #1a1a1a;
-            --gray: #f9f9f9;
-            --pink: #ff8b94;
-            --blue: #a2d2ff;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-            background: var(--gray);
-        }
-
-        .sidebar {
-            width: 280px;
-            background: white;
-            border-right: 2px solid var(--mint);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .sidebar h2 {
-            font-size: 18px;
-            text-transform: uppercase;
-            color: var(--dark);
-            border-bottom: 2px solid var(--mint);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-
-        .nav-btn {
-            padding: 15px;
-            margin-bottom: 10px;
-            border: none;
-            background: none;
-            text-align: left;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 12px;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .nav-btn:hover, .nav-btn.active {
-            background: var(--mint);
-            color: var(--dark);
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 40px;
-            overflow-y: auto;
-        }
-
-        .header-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .admin-table {
-            width: 100%;
-            background: white;
-            border-radius: 20px;
-            border-collapse: collapse;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        }
-
-        .admin-table th {
-            background: var(--mint);
-            padding: 15px;
-            text-align: left;
-            font-size: 14px;
-        }
-
-        .admin-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border-radius: 50px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .btn-add { background: var(--mint); color: var(--dark); }
-        .btn-edit { background: var(--blue); color: var(--dark); margin-right: 5px; }
-        .btn-delete { background: var(--pink); color: white; }
-        .btn-add:hover { transform: scale(1.05); }
-
-        .modal-overlay {
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            z-index: 1000; 
-            justify-content: center; 
-            align-items: center;
-            backdrop-filter: blur(4px);
-        }
-        
-        .modal-card {
-            background: white; 
-            width: 500px; 
-            padding: 30px; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box;
-        }
-    </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <h2>Админ-панель</h2>
-    <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
-    <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
-    <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
-    <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
-    <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
-    <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-    <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
-</div>
-
-<div class="main-content">
-    <div class="header-actions">
-        <h1 id="section-title">Спектакли</h1>
-        <button class="btn btn-add" id="add-btn" onclick="openCreateModal()">+ Добавить запись</button>
+<div class="admin-container">
+    
+    <div class="sidebar">
+        <h2>Админ-панель</h2>
+        <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
+        <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
+        <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
+        <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
+        <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
+        <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
     </div>
 
-    <div id="content-area">
-        <table class="admin-table">
-            <thead><tr id="table-head"></tr></thead>
-            <tbody id="table-body"></tbody>
-        </table>
+    <div class="main-content">
+        <div class="header-actions">
+            <h1 id="section-title">Спектакли</h1>
+            <button class="btn btn-add" id="add-btn" onclick="openCreateModal()">+ Добавить запись</button>
+        </div>
+
+        <div id="content-area">
+            <table class="admin-table">
+                <thead><tr id="table-head"></tr></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
     </div>
-</div>
+</div> 
 
 <div id="modal-overlay" class="modal-overlay">
     <div class="modal-card">

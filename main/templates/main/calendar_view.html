@@ -1,0 +1,202 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Календарь</title>
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+</head>
+<body>
+
+<div id="calendar-container">
+    <div id="calendar"></div>
+
+    <div id="calendar-popover">
+        <div class="popover-header">
+            <h3 id="popover-date-title">Дата</h3>
+            <button onclick="closePopover()" style="background:none; border:none; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+        <div id="popover-content" class="popover-event-list"></div>
+    </div>
+
+    <div id="event-detail-popover">
+        <div class="popover-header">
+            <h3 id="detail-title">Детали мероприятия</h3>
+            <button onclick="closeDetail()" style="background:none; border:none; cursor:pointer; font-size:24px;">&times;</button>
+        </div>
+        <div id="detail-content" class="popover-event-list"></div>
+    </div>
+</div>
+
+<script>
+    window.initFullCalendar = function() {
+        const calendarEl = document.getElementById('calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ru',
+            firstDay: 1,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth'
+            },
+            events: '/api/calendar-data/',
+            dateClick: function(info) {
+                closeDetail();
+                document.getElementById('calendar-popover').style.display = 'block';
+                loadDayEvents(info.dateStr);
+            },
+            eventClick: function(info) {
+                closePopover();
+                openEventDetail(info.event.id, info.event.extendedProps.type || info.event.extendedProps.type);
+            }
+        });
+        calendar.render();
+    };
+
+    function loadDayEvents(date) {
+        const content = document.getElementById('popover-content');
+        const title = document.getElementById('popover-date-title');
+        title.innerText = date;
+        content.innerHTML = '<div style="font-size:14px; color: #999; padding: 20px;">Загрузка...</div>';
+
+        fetch(`/api/calendar-data/?date=${date}`)
+            .then(res => res.json())
+            .then(data => {
+                const filtered = data.filter(event => event.start.split('T')[0] === date);
+                
+                if (filtered.length === 0) {
+                    content.innerHTML = '<div style="text-align:center; padding:30px; color:#999;">Нет событий</div>';
+                    return;
+                }
+
+                content.innerHTML = filtered.map(event => {
+                    const time = event.start.includes('T') ? event.start.split('T')[1].substring(0, 5) : '--:--';
+                    const type = event.extendedProps ? (event.extendedProps.type || event.type) : event.type;
+
+                    // Используем структуру popover-item -> popover-time для соответствия CSS
+                    return `
+                        <div class="popover-item" onclick="openEventDetail('${event.id}', '${type}')">
+                            <div class="popover-time">${time}</div>
+                            <div class="popover-info">
+                                <span>${event.title}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            })
+            .catch(err => {
+                content.innerHTML = '<div style="color:red; padding:20px;">Ошибка загрузки</div>';
+            });
+    }
+
+    function openEventDetail(id, type) {
+        closePopover();
+        const detailWindow = document.getElementById('event-detail-popover');
+        const detailContent = document.getElementById('detail-content');
+        
+        detailWindow.style.display = 'block';
+        detailContent.innerHTML = '<div style="font-size:14px; color: #999; padding: 20px;">Загрузка...</div>';
+
+        const apiPath = (type === 'event') ? `/api/events/${id}/` : `/api/applications/${id}/`;
+
+        fetch(apiPath)
+            .then(res => res.json())
+            .then(data => {
+                const isEvent = (type === 'event');
+                const categories = { 'birthday': 'День рождения', 'graduation': 'Выпускной', 'spectacle': 'Спектакль' };
+
+                let rawDate = data.event_date || data.date || data.start || '';
+                const displayDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+
+                let displayTime = '--:--';
+                if (data.event_time) {
+                    displayTime = data.event_time.substring(0, 5);
+                } else if (rawDate.includes('T')) {
+                    displayTime = rawDate.split('T')[1].substring(0, 5);
+                }
+
+                detailContent.innerHTML = `
+                    <div class="detail-grid">
+                        <div class="section-divider">ОСНОВНОЕ</div>
+                        <div class="detail-field full-width">
+                            <span class="field-label">${isEvent ? 'Название' : 'ФИО Клиента'}</span>
+                            <div class="field-value" style="font-size: 16px; color: #5a9473;">${isEvent ? data.title : data.full_name}</div>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">Дата</span>
+                            <div class="field-value">${displayDate || 'Не указана'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">Время</span>
+                            <div class="field-value">${displayTime}</div>
+                        </div>
+
+                        ${!isEvent ? `
+                        <div class="section-divider">КОНТАКТЫ</div>
+                        <div class="detail-field">
+                            <span class="field-label">Телефон</span>
+                            <div class="field-value">${data.phone}</div>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">Email</span>
+                            <div class="field-value">${data.email || '—'}</div>
+                        </div>
+                        ` : ''}
+
+                        <div class="section-divider">${isEvent ? 'ИНФОРМАЦИЯ' : 'ЗАКАЗ'}</div>
+                        <div class="detail-field">
+                            <span class="field-label">Категория</span>
+                            <div class="field-value">${categories[data.category] || (isEvent ? 'Спектакль' : '—')}</div>
+                        </div>
+                        <div class="detail-field">
+                            <span class="field-label">${isEvent ? 'Цена' : 'Гости'}</span>
+                            <div class="field-value">${isEvent ? (data.price + ' ₽') : (data.guests_count + ' чел.')}</div>
+                        </div>
+                        <div class="detail-field full-width">
+                            <span class="field-label">Адрес / Локация</span>
+                            <div class="field-value">${data.location || data.address || 'Не указан'}</div>
+                        </div>
+                        
+                        ${isEvent ? `
+                        <div class="detail-field full-width">
+                            <span class="field-label">Краткое описание</span>
+                            <div class="field-value">${data.short_description || '—'}</div>
+                        </div>
+                        ` : `
+                        <div class="detail-field full-width">
+                            <span class="field-label">Программы</span>
+                            <div class="field-value">
+                                ${data.show_name ? `• ${data.show_name}<br>` : ''}
+                                ${data.program_name ? `• ${data.program_name}` : ''}
+                            </div>
+                        </div>
+                        `}
+
+                        <div class="detail-field full-width" style="background: #f9f9f9; border: none;">
+                            <span class="field-label">Описание / Комментарий</span>
+                            <div class="field-value">${data.description || data.message || '...'}</div>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                console.error(err);
+                detailContent.innerHTML = '<div style="color:red; padding:20px;">Ошибка при получении данных</div>';
+            });
+    }
+
+    function closePopover() { document.getElementById('calendar-popover').style.display = 'none'; }
+    function closeDetail() { document.getElementById('event-detail-popover').style.display = 'none'; }
+
+    document.addEventListener('mousedown', function(e) {
+        const pop1 = document.getElementById('calendar-popover');
+        const pop2 = document.getElementById('event-detail-popover');
+        if (pop1.style.display === 'block' && !pop1.contains(e.target) && !e.target.closest('.fc-daygrid-day')) closePopover();
+        if (pop2.style.display === 'block' && !pop2.contains(e.target) && !e.target.closest('.fc-event')) closeDetail();
+    });
+</script>
+</body>
+</html>

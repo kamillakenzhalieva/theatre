@@ -25,4 +25,6 @@ urlpatterns = [
     
     path('api/calendar-data/', views.calendar_events_api, name='calendar_data'),
     path('calendar-page/', views.calendar_page_render),
+    
+    path('get-service-data/', views.get_service_data, name='get_service_data'),
 ]

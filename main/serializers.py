@@ -26,3 +26,14 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = '__all__'
+
+    def validate_tariff(self, value):
+        if value == "" or value is None:
+            return None
+        return value
+
+    def validate_chosen_program(self, value):
+        if value == "" or value is None:
+            return None
+        return value
+    

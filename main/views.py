@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .models import HomePage, Event, Service, Tariff, Application
+from .models import HomePage, Event, Service, Tariff, Application, Program
 from .serializers import (
     HomePageSerializer, EventSerializer, ServiceSerializer, 
     TariffSerializer, ApplicationSerializer
@@ -32,21 +32,43 @@ def event_detail(request, pk):
 
 def birthday_page(request):
     tariffs = Tariff.objects.filter(category='birthday')
-    packages = [{
-        'title': t.name,
-        'price': t.price,
-        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
-    } for t in tariffs]
-    return render(request, 'birthdays.html', {'packages': packages})
+    shows = Program.objects.filter(category='birthday', type='show')
+    interactives = Program.objects.filter(category='birthday', type='interactive')
+    
+    all_shows = Program.objects.filter(type='show')
+    all_interactives = Program.objects.filter(type='interactive')
+    spectacles = Event.objects.filter(is_active=True)
+    all_tariffs = Tariff.objects.all()
+
+    return render(request, 'birthdays.html', {
+        'tariffs': tariffs,
+        'all_tariffs': all_tariffs,
+        'shows': shows,
+        'interactives': interactives,
+        'all_shows': all_shows,
+        'all_interactives': all_interactives,
+        'spectacles': spectacles
+    })
 
 def graduation_view(request):
     tariffs = Tariff.objects.filter(category='graduation')
-    packages = [{
-        'title': t.name,
-        'price': t.price,
-        'features': [f.strip() for f in t.features_list.split('\n') if f.strip()],
-    } for t in tariffs]
-    return render(request, 'graduation.html', {'packages': packages})
+    shows = Program.objects.filter(category='graduation', type='show')
+    interactives = Program.objects.filter(category='graduation', type='interactive')
+    
+    all_shows = Program.objects.filter(type='show')
+    all_interactives = Program.objects.filter(type='interactive')
+    spectacles = Event.objects.filter(is_active=True)
+    all_tariffs = Tariff.objects.all()
+
+    return render(request, 'graduation.html', {
+        'tariffs': tariffs,
+        'all_tariffs': all_tariffs,
+        'shows': shows,
+        'interactives': interactives,
+        'all_shows': all_shows,
+        'all_interactives': all_interactives,
+        'spectacles': spectacles
+    })
 
 def admin_panel(request):
     return render(request, 'admin_panel.html')
@@ -81,20 +103,24 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             'Спектакль': 'spectacle'
         }
         
-        if data.get('category') in cat_map:
-            data['category'] = cat_map[data.get('category')]
+        raw_category = data.get('category')
+        if raw_category in cat_map:
+            data['category'] = cat_map[raw_category]
 
-        if 'selection' in data and not data.get('tariff'):
-            tariff = Tariff.objects.filter(name=data.get('selection')).first()
-            if tariff:
-                data['tariff'] = tariff.id
+        tariff_name = data.get('tariff') or data.get('selection')
+        if tariff_name:
+            tariff_obj = Tariff.objects.filter(name=tariff_name).first()
+            if tariff_obj:
+                data['tariff'] = tariff_obj.id
+            else:
+                data['tariff'] = None
 
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
         self.perform_create(serializer)
         
-        if request.accepted_renderer.format == 'html':
-            return redirect('home')
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
 def calendar_events_api(request):
@@ -138,3 +164,35 @@ def calendar_events_api(request):
 
 def calendar_page_render(request):
     return render(request, 'calendar_view.html')
+ 
+def get_service_data(request):
+    category_map = {
+        'День Рождения': 'birthday',
+        'Выпускной': 'graduation',
+        'Спектакль': 'spectacle'
+    }
+    category_label = request.GET.get('category')
+    category = category_map.get(category_label)
+
+    if category_label == 'Спектакль':
+        items = list(Event.objects.filter(is_active=True).values_list('title', flat=True))
+        return JsonResponse({'tariffs': items, 'shows': [], 'interactives': []})
+    
+    if category:
+        tariffs = list(Tariff.objects.filter(category=category).values_list('name', flat=True))
+        
+        shows = list(Program.objects.filter(
+            category=category, type='show'
+        ).values_list('title', flat=True))
+        
+        interactives = list(Program.objects.filter(
+            category=category, type='interactive'
+        ).values_list('title', flat=True))
+
+        return JsonResponse({
+            'tariffs': tariffs,
+            'shows': shows,
+            'interactives': interactives
+        })
+
+    return JsonResponse({'error': 'Invalid category'}, status=400)

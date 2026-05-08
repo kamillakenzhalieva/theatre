@@ -2,37 +2,70 @@
 {% load static %}
 
 {% block content %}
-<div class="afisha-container">
+<div class="programs-section">
     <div class="page-header">
         <h1 class="page-title">Дни Рождения</h1>
         <p class="page-subtitle">Устройте незабываемый праздник в стенах нашего театра</p>
     </div>
 
-    <div class="events-grid">
-        {% for item in packages %}
-        <div class="event-card">
-            <div class="event-image" style="background-color: #e8f5e9; display: flex; align-items: center; justify-content: center; font-size: 50px;">
-                🎂
-                <div class="event-price">{{ item.price }} ₽</div>
+    <div class="tariffs-grid">
+        {% for t in tariffs %}
+        <div class="tariff-card" style="border-top: 8px solid #8cedc7;">
+            <div class="tariff-header" style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; font-size: 28px; text-transform: uppercase;">«{{ t.name }}»</h2>
+            </div>
+            {% if t.image %}
+                <img src="{{ t.image.url }}" class="card-img-top" alt="{{ t.name }}">
+            {% else %}
+                <div class="card-img-top" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center;">🎭</div>
+            {% endif %}
+            
+            <div class="tariff-header">
+                
+                <div class="tariff-duration" style="color: #2ec4b6; font-weight: 700; margin-bottom: 10px;">
+                    ⏳ {{ t.duration }}
+                </div>
+                <div class="tariff-price">{{ t.price }} ₽</div>
             </div>
 
-            <div class="event-info">
-                <div>
-                    <h2 class="event-title">{{ item.title }}</h2>
-                    <ul style="color: #666; margin-bottom: 20px; padding-left: 20px;">
-                        {% for feature in item.features %}
-                        <li>{{ feature }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                
-                <div class="event-footer">
-                    <button class="btn-buy" onclick="openModal('День Рождения')">Заказать праздник</button>
-                </div>
+            <ul class="tariff-features">
+                {% for line in t.features_list.splitlines %}
+                    {% if line.strip %}<li>{{ line.strip }}</li>{% endif %}
+                {% endfor %}
+            </ul>
+            
+            <button class="btn-buy" onclick="openModal('birthday', '{{ t.id }}')">Забронировать дату</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2 class="section-title">Шоу-программы</h2>
+    <div class="wide-cards-stack">
+        {% for program in shows %}
+        <div class="program-card-wide" style="border-left: 5px solid #8cedc7;">
+            {% if program.image %}
+                <img src="{{ program.image.url }}" class="wide-img" alt="{{ program.title }}">
+            {% endif %}
+            <div class="program-info">
+                <h3>{{ program.title }}</h3>
+                <p>{{ program.description }}</p>
             </div>
         </div>
-        {% empty %}
-        <p>Тарифы пока не добавлены.</p>
+        {% endfor %}
+    </div>
+
+    <h2 class="section-title" style="margin-top: 60px;">Интерактивные программы</h2>
+    <div class="wide-cards-stack">
+        {% for item in interactives %}
+        <div class="program-card-wide" style="border-left: 5px solid #8cedc7;">
+            {% if item.image %}
+                <img src="{{ item.image.url }}" class="wide-img" alt="{{ item.title }}">
+            {% endif %}
+            <div class="program-info">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.description }}</p>
+            </div>
+        </div>
         {% endfor %}
     </div>
 </div>

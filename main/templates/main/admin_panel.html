@@ -44,8 +44,9 @@
         <form id="admin-form" enctype="multipart/form-data">
             <input type="hidden" name="id" id="field-id">
             <div id="form-fields"></div>
-            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
                 <button type="button" class="btn" onclick="closeModal()" style="background: #eee;">Отмена</button>
+                <button type="button" id="approve-btn" class="btn btn-add" onclick="approveApplication()">Одобрить</button>
                 <button type="submit" class="btn btn-add">Сохранить</button>
             </div>
         </form>
@@ -76,187 +77,171 @@
             { name: 'is_active', label: 'Отображать на сайте', type: 'checkbox' }
         ],
         'tariffs': [
-            { 
-                name: 'category', 
-                label: 'Категория', 
-                type: 'select',
-                options: [
-                    { value: 'birthday', label: 'День рождения' },
-                    { value: 'graduation', label: 'Выпускной' },
-                    { value: 'spectacle', label: 'Спектакль' }
-                ]
-            },
+            { name: 'category', label: 'Категория', type: 'select', options: [
+                { value: 'birthday', label: 'День рождения' },
+                { value: 'graduation', label: 'Выпускной' },
+                { value: 'spectacle', label: 'Спектакль' }
+            ]},
             { name: 'name', label: 'Название тарифа', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
             { name: 'features_list', label: 'Список услуг', type: 'textarea' }
         ],
         'applications': [
-            { name: 'full_name', label: 'Имя клиента', type: 'text' },
+            { name: 'category', label: 'Категория', type: 'select', options: [
+                { value: 'birthday', label: 'День рождения' },
+                { value: 'graduation', label: 'Выпускной' },
+                { value: 'spectacle', label: 'Спектакль' }
+            ]},
+            { name: 'status', label: 'Статус', type: 'select', options: [
+                { value: 'pending', label: 'Ожидание' },
+                { value: 'processing', label: 'На рассмотрении' },
+                { value: 'approved', label: 'Одобрено' },
+                { value: 'rejected', label: 'Отклонено' }
+            ]},
+            { name: 'full_name', label: 'ФИО заказчика', type: 'text' },
             { name: 'phone', label: 'Телефон', type: 'text' },
             { name: 'email', label: 'Email', type: 'text' },
             { name: 'age', label: 'Возраст детей', type: 'text' },
             { name: 'address', label: 'Адрес', type: 'text' },
             { name: 'event_date', label: 'Дата события', type: 'date' },
-            { name: 'event_time', label: 'Время события', type: 'time' }
+            { name: 'event_time', label: 'Время события', type: 'time' },
+            { name: 'tariff', label: 'Выбранный тариф', type: 'text' }, 
+            { name: 'chosen_show', label: 'Шоу-программа', type: 'text' },
+            { name: 'chosen_program', label: 'Интерактив', type: 'text' },
+            { name: 'guests_count', label: 'Кол-во гостей', type: 'number' },
+            { name: 'message', label: 'Комментарий', type: 'textarea' }
         ]
     };
 
     async function loadSection(section) {
-    currentSection = section;
-    const contentArea = document.getElementById('content-area');
-    const addBtn = document.getElementById('add-btn');
-    const titleEl = document.getElementById('section-title');
+        currentSection = section;
+        const contentArea = document.getElementById('content-area');
+        const addBtn = document.getElementById('add-btn');
+        const titleEl = document.getElementById('section-title');
 
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('onclick')?.includes(`'${section}'`)) {
-            btn.classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('onclick')?.includes(`'${section}'`)) {
+                btn.classList.add('active');
+            }
+        });
+
+        const titles = { 
+            'events': 'Управление спектаклями', 
+            'tariffs': 'Настройка тарифов', 
+            'applications': 'Входящие заявки',
+            'home': 'Главная страница и контакты',
+            'calendar': 'Календарь мероприятий'
+        };
+        titleEl.innerText = titles[section] || 'Панель управления';
+        
+        if (addBtn) {
+            addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
         }
-    });
 
-    const titles = { 
-        'events': 'Управление спектаклями', 
-        'tariffs': 'Настройка тарифов', 
-        'applications': 'Входящие заявки',
-        'home': 'Главная страница и контакты',
-        'calendar': 'Календарь мероприятий'
-    };
-    titleEl.innerText = titles[section] || 'Панель управления';
-    
-    if (addBtn) {
-        addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
-    }
+        if (section === 'calendar') {
+            try {
+                const response = await fetch('/calendar-page/');
+                const html = await response.text();
+                contentArea.innerHTML = html;
+                const scripts = contentArea.querySelectorAll("script");
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement("script");
+                    newScript.text = oldScript.text;
+                    document.head.appendChild(newScript).parentNode.removeChild(newScript);
+                });
+                setTimeout(() => { if (window.initFullCalendar) window.initFullCalendar(); }, 50);
+            } catch (e) { contentArea.innerHTML = 'Ошибка загрузки страницы календаря'; }
+            return;
+        }
 
-    contentArea.innerHTML = '<p style="padding:20px;">Загрузка...</p>';
+        contentArea.innerHTML = `<table class="admin-table"><thead><tr id="table-head"></tr></thead><tbody id="table-body"></tbody></table>`;
 
-    if (section === 'calendar') {
         try {
-            const response = await fetch('/calendar-page/');
-            const html = await response.text();
-            contentArea.innerHTML = html;
-
-            const scripts = contentArea.querySelectorAll("script");
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement("script");
-                newScript.text = oldScript.text;
-                document.head.appendChild(newScript).parentNode.removeChild(newScript);
-            });
-
-            setTimeout(() => {
-                if (window.initFullCalendar) window.initFullCalendar();
-            }, 50);
-
+            const response = await fetch(`/api/${section}/`);
+            const data = await response.json();
+            section === 'home' ? renderHomeSection(data) : renderTable(data);
         } catch (e) {
-            contentArea.innerHTML = 'Ошибка загрузки страницы календаря';
+            const body = document.getElementById('table-body');
+            if (body) body.innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>';
         }
-        return;
     }
-
-    contentArea.innerHTML = `
-        <table class="admin-table">
-            <thead><tr id="table-head"></tr></thead>
-            <tbody id="table-body"></tbody>
-        </table>`;
-
-    try {
-        const response = await fetch(`/api/${section}/`);
-        const data = await response.json();
-        section === 'home' ? renderHomeSection(data) : renderTable(data);
-    } catch (e) {
-        console.error(e);
-        const body = document.getElementById('table-body');
-        if (body) body.innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>';
-    }
-}
 
     function renderTable(data) {
         const head = document.getElementById('table-head');
         const body = document.getElementById('table-body');
-        head.innerHTML = ''; 
-        body.innerHTML = '';
+        head.innerHTML = ''; body.innerHTML = '';
 
         if (!data || data.length === 0) {
-            body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:30px;">Данных пока нет</td></tr>';
+            body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:30px;">Записей пока нет</td></tr>';
             return;
         }
 
-        const keys = currentSection === 'events' 
-            ? ['id', 'title', 'date', 'price'] 
-            : currentSection === 'tariffs' 
-                ? ['id', 'name', 'price', 'category']
-                : ['id', 'full_name', 'phone', 'event_date'];
-        
-        keys.forEach(key => head.innerHTML += `<th>${key.toUpperCase()}</th>`);
-        head.innerHTML += `<th>ДЕЙСТВИЯ</th>`;
+        const isApp = currentSection === 'applications';
+        const keys = isApp ? ['full_name', 'phone', 'event_date'] : (currentSection === 'events' ? ['id', 'title', 'date', 'price'] : ['id', 'name', 'price', 'category']);
+        const labels = isApp ? ['ИМЯ ЗАКАЗЧИКА', 'НОМЕР', 'ДАТА МЕРОПРИЯТИЯ'] : keys.map(k => k.toUpperCase());
+
+        labels.forEach(label => head.innerHTML += `<th>${label}</th>`);
+        head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
 
         data.forEach(item => {
-            let row = `<tr>`;
+            if (isApp && item.status === 'approved') return;
+
+            let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
             keys.forEach(key => row += `<td>${item[key] || '-'}</td>`);
             
-            let actionButtons = `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button>`;
-            if (currentSection !== 'applications') {
-                actionButtons += `<button class="btn btn-delete" onclick="deleteItem(${item.id})">Удалить</button>`;
+            if (isApp) {
+                const statusTranslations = {'pending': 'Новая заявка', 'processing': 'На рассмотрении', 'rejected': 'Отклонено'};
+                row += `
+                    <td class="table-status-wrapper">
+                        <span class="status-badge status-${item.status}">${statusTranslations[item.status] || item.status}</span>
+                        <button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button>
+                    </td>`;
+            } else {
+                let actionButtons = `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button>`;
+                actionButtons += `<button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button>`;
+                row += `<td>${actionButtons}</td>`;
             }
-            
-            row += `<td>${actionButtons}</td></tr>`;
+            row += `</tr>`;
             body.innerHTML += row;
         });
     }
 
     function renderHomeSection(data) {
         const body = document.getElementById('table-body');
-        const head = document.getElementById('table-head');
-        head.innerHTML = ''; 
-        body.innerHTML = '';
-
         const item = (Array.isArray(data) && data.length > 0) ? data[0] : (data.id ? data : null);
-
-        if (!item) {
-            body.innerHTML = '<tr><td style="padding:40px; text-align:center;">Данных нет. Создайте их в /admin/</td></tr>';
-            return;
-        }
-
-        body.innerHTML = `
-            <tr>
-                <td colspan="100%" style="padding: 40px; text-align: center;">
-                    <div style="background: white; padding: 30px; border-radius: 20px; display: inline-block; border: 2px solid var(--mint);">
-                        <h2 style="margin-top:0;">${item.welcome_text || 'Заголовок не задан'}</h2>
-                        <p>📍 ${item.address || 'Адрес не заполнен'}</p>
-                        <p>📞 ${item.phone || 'Телефон не заполнен'}</p>
-                        <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})' style="padding: 10px 30px; margin-top:10px;">
-                            🔧 Редактировать контакты и текст
-                        </button>
-                    </div>
-                </td>
-            </tr>`;
+        if (!item) { body.innerHTML = '<tr><td style="padding:40px; text-align:center;">Данных нет.</td></tr>'; return; }
+        body.innerHTML = `<tr><td colspan="100%" style="padding: 40px; text-align: center;"><div style="background: white; padding: 30px; border-radius: 20px; display: inline-block; border: 2px solid var(--mint);"><h2 style="margin-top:0;">${item.welcome_text || ''}</h2><p>📍 ${item.address || ''}</p><p>📞 ${item.phone || ''}</p><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})' style="padding: 10px 30px; margin-top:10px;">🔧 Редактировать</button></div></td></tr>`;
     }
 
     function generateFormFields(item = null) {
         const container = document.getElementById('form-fields');
         container.innerHTML = '';
-        
+        const currentCategory = item ? item.category : '';
+
         schema[currentSection].forEach(field => {
+            if (currentSection === 'applications' && currentCategory === 'spectacle') {
+                if (['tariff', 'chosen_show', 'chosen_program'].includes(field.name)) return;
+            }
+
             let val = item ? item[field.name] : '';
             let inputHtml;
+            const labelClass = 'class="form-field-label"'; 
 
             if (field.type === 'select') {
-                inputHtml = `<select name="${field.name}">
+                inputHtml = `<select name="${field.name}" class="form-field-select" ${field.name === 'category' ? 'onchange="refreshModal(this)"' : ''}>
                     ${field.options.map(opt => `<option value="${opt.value}" ${val === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
                 </select>`;
             } else if (field.type === 'textarea') {
-                inputHtml = `<textarea name="${field.name}" rows="3">${val || ''}</textarea>`;
-            } else if (field.type === 'file') {
-                inputHtml = `<input type="file" name="${field.name}" accept="image/*">`;
-                if (val) inputHtml += `<small style="display:block; margin-top:5px; color:green;">Файл уже загружен</small>`;
-            } else if (field.type === 'checkbox') {
-                inputHtml = `<input type="checkbox" name="${field.name}" style="width: auto;" ${val ? 'checked' : ''}>`;
+                inputHtml = `<textarea name="${field.name}" class="form-field-textarea" rows="3">${val || ''}</textarea>`;
             } else {
-                inputHtml = `<input type="${field.type}" name="${field.name}" value="${val || ''}">`;
+                const isReadOnly = ['tariff', 'chosen_show', 'chosen_program'].includes(field.name) ? 'readonly style="background: #f9f9f9;"' : '';
+                inputHtml = `<input type="${field.type}" name="${field.name}" class="form-field-input" value="${val || ''}" ${isReadOnly}>`;
             }
 
             container.insertAdjacentHTML('beforeend', `
                 <div class="form-group">
-                    <label>${field.label}</label>
+                    <label ${labelClass}>${field.label}</label>
                     ${inputHtml}
                 </div>`);
         });
@@ -265,6 +250,7 @@
     function openCreateModal() {
         document.getElementById('modal-title').innerText = "Добавить новую запись";
         document.getElementById('field-id').value = ''; 
+        document.getElementById('approve-btn').style.display = 'none';
         generateFormFields();
         document.getElementById('modal-overlay').style.display = 'flex';
     }
@@ -272,6 +258,14 @@
     function openEditModal(item) {
         document.getElementById('modal-title').innerText = "Редактировать запись";
         document.getElementById('field-id').value = item.id; 
+        
+        const approveBtn = document.getElementById('approve-btn');
+        if (currentSection === 'applications' && item.status !== 'approved') {
+            approveBtn.style.display = 'block';
+        } else {
+            approveBtn.style.display = 'none';
+        }
+        
         generateFormFields(item);
         document.getElementById('modal-overlay').style.display = 'flex';
     }
@@ -281,23 +275,16 @@
         document.getElementById('admin-form').reset();
     }
 
+    function refreshModal(selectElement) {
+        const formData = new FormData(document.getElementById('admin-form'));
+        const currentItem = Object.fromEntries(formData.entries());
+        generateFormFields(currentItem);
+    }
+
     document.getElementById('admin-form').onsubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const id = document.getElementById('field-id').value;
-
-        const dateVal = formData.get('date') || formData.get('event_date');
-        const timeVal = formData.get('time') || formData.get('event_time');
-
-        if (dateVal && timeVal) {
-            const combinedDateTime = dateVal.includes('T') ? dateVal : `${dateVal}T${timeVal}`;
-            if (currentSection === 'events') formData.set('date', combinedDateTime);
-        }
-
-        if (currentSection === 'events' && e.target.is_active) {
-            formData.set('is_active', e.target.is_active.checked);
-        }
-
         const url = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`;
         const method = id ? 'PUT' : 'POST';
 
@@ -307,13 +294,8 @@
             body: formData
         });
 
-        if (response.ok) {
-            closeModal();
-            loadSection(currentSection);
-        } else {
-            const errorData = await response.json();
-            alert('Ошибка при сохранении: ' + JSON.stringify(errorData));
-        }
+        if (response.ok) { closeModal(); loadSection(currentSection); }
+        else { alert('Ошибка при сохранении'); }
     };
 
     async function deleteItem(id) {
@@ -324,6 +306,19 @@
             });
             loadSection(currentSection);
         }
+    }
+
+    async function approveApplication() {
+        const id = document.getElementById('field-id').value;
+        if (!id || !confirm('Одобрить заявку? Она уйдет в календарь.')) return;
+        const formData = new FormData();
+        formData.append('status', 'approved');
+        const response = await fetch(`/api/applications/${id}/`, {
+            method: 'PATCH',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        });
+        if (response.ok) { closeModal(); loadSection('applications'); }
     }
 
     loadSection('events');

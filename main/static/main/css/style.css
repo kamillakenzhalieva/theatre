@@ -762,3 +762,219 @@ nav a:hover {
     color: #333;
     font-weight: 700;
 }
+
+
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+    background-color: #f9f9f9;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404; 
+}
+
+.status-processing {
+    background-color: #cfe2ff;
+    color: #084298; 
+}
+
+.status-approved {
+    background-color: #d1e7dd;
+    color: #0f5132; 
+}
+
+.status-rejected {
+    background-color: #f8d7da;
+    color: #842029; 
+}
+
+#form-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+    gap: 15px;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+
+.form-field-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #666;
+}
+
+.form-field-input, 
+.form-field-select, 
+.form-field-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.form-field-textarea {
+    grid-column: span 2; 
+    resize: vertical;
+}
+
+.action-btn-confirm {
+    background-color: #28a745;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.action-btn-confirm:hover {
+    background-color: #218838;
+}
+
+.table-status-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: relative;
+}
+
+.table-quick-remove {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+    transition: color 0.2s;
+}
+
+.table-quick-remove:hover {
+    color: #dc3545;
+}
+
+.admin-table tr.clickable-row .btn-edit,
+.admin-table tr.clickable-row .btn-delete {
+    display: none;
+}
+
+.modal-header-mint {
+    background: var(--mint);
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 20px 20px 0 0;
+}
+
+.modal-header-mint h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--dark);
+    text-transform: uppercase;
+    font-weight: 800;
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.choice-btn {
+    width: 100%;
+    padding: 20px;
+    margin-bottom: 15px;
+    border: 2px solid var(--mint);
+    background: white;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.choice-btn:hover {
+    background: var(--mint);
+    transform: translateY(-3px);
+}
+
+.form-field {
+    margin-bottom: 20px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #555;
+}
+
+.form-field input, 
+.form-field select, 
+.form-field textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 16px;
+    box-sizing: border-box;
+    background: #fdfdfd;
+}
+
+.form-field input:focus {
+    outline: none;
+    border-color: var(--mint);
+    box-shadow: 0 0 0 3px rgba(168, 230, 207, 0.3);
+}
+
+.btn-submit-order {
+    width: 100%;
+    padding: 15px;
+    background: var(--mint);
+    color: rgb(0, 0, 0);
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: 0.3s;
+    margin-top: 10px;
+}
+
+.btn-submit-order:hover {
+    background: rgba(62, 221, 163, 0.775);
+    transform: scale(1.02);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.modal-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+    padding: 0;
+}
+
+.modal-body {
+    overflow-y: auto;
+    max-height: 70vh;
+}

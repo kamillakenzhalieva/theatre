@@ -28,6 +28,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
     tariff_name = serializers.ReadOnlyField(source='tariff.name')
     show_name = serializers.ReadOnlyField(source='chosen_show.title')
     program_name = serializers.ReadOnlyField(source='chosen_program.title')
+    tariff = serializers.StringRelatedField()
+    chosen_show = serializers.StringRelatedField()
+    chosen_program = serializers.StringRelatedField()
 
     class Meta:
         model = Application

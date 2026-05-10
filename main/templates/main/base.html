@@ -195,35 +195,41 @@
 
         document.querySelector('#orderFormModal form').onsubmit = async function(e) {
             e.preventDefault();
-
             const formData = new FormData(this);
-            const category = document.getElementById('categoryInput').value;
-            const data = Object.fromEntries(formData.entries());
+            const rawData = Object.fromEntries(formData.entries());
 
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
+            const payload = {
+                category: rawData.category,
+                full_name: rawData.full_name,
+                phone: rawData.phone,
+                email: rawData.email || null,
+                age: rawData.age || null,
+                address: rawData.address || null,
+                event_date: rawData.event_date,
+                event_time: rawData.event_time,
+                tariff: rawData.tariff || null,
+                // Важно: имена ключей должны совпадать с моделями
+                chosen_show: rawData.show_program || null,
+                chosen_program: rawData.interactive || null
+            };
 
-                if (response.ok) {
-                    document.getElementById('orderFormModal').style.display = 'none';
-                    
-                    document.getElementById('successModal').style.display = 'flex';
-                    
-                    this.reset();
-                } else {
-                    const errors = await response.json();
-                    console.error('Ошибка:', errors);
-                    alert('Произошла ошибка при валидации данных.');
-                }
-            } catch (error) {
-                console.error('Ошибка сети:', error);
+            const response = await fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                document.getElementById('orderFormModal').style.display = 'none';
+                document.getElementById('successModal').style.display = 'flex';
+                this.reset();
+            } else {
+                const err = await response.json();
+                console.log(err);
+                alert("Ошибка: " + JSON.stringify(err));
             }
         };
 

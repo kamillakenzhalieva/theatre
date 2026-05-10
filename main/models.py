@@ -149,18 +149,17 @@ class Assignment(models.Model):
     application = models.ForeignKey(Application, on_delete=models.CASCADE)
     
     class Meta:
-        unique_together = ('staff', 'application')
         verbose_name = "Назначение сотрудника"
         verbose_name_plural = "Назначения сотрудников"
 
     def _get_event_intervals(self, app):
         duration_minutes = 60
         if app.category != 'spectacle' and app.tariff and app.tariff.duration:
-            d_str = str(app.tariff.duration).lower()
+            d_str = str(app.tariff.duration).lower().strip()
             nums = re.findall(r'\d+', d_str)
             if nums:
                 val = int(nums[0])
-                if any(word in d_str for word in ['час', 'ч', 'hour', 'h']):
+                if any(word in d_str for word in ['час', 'ч', 'hour', 'h']) or val < 10:
                     duration_minutes = val * 60
                 else:
                     duration_minutes = val
@@ -171,34 +170,34 @@ class Assignment(models.Model):
 
     def clean(self):
         super().clean()
-        if not hasattr(self, 'staff') or not hasattr(self, 'application'):
+        if not self.application or not self.application.event_date or not self.application.event_time:
             return
 
-        curr_app = self.application
-        if not curr_app.event_date or not curr_app.event_time:
-            return
+        curr_start, curr_end = self._get_event_intervals(self.application)
+        target_staff_ids = []
 
-        curr_start, curr_end = self._get_event_intervals(curr_app)
-        existing = Assignment.objects.filter(staff=self.staff)
-        
-        if self.pk:
-            existing = existing.exclude(pk=self.pk)
-        
-        for other in existing:
-            other_app = other.application
-            if not other_app.event_date or not other_app.event_time:
-                continue
-                
-            other_start, other_end = self._get_event_intervals(other_app)
-            
-            if curr_start < other_end and curr_end > other_start:
-                raise ValidationError(
-                    f"Сотрудник {self.staff.full_name} уже занят на другом событии ({other_app.full_name}) до {other_end.strftime('%H:%M')}!"
-                )
+        if self.staff:
+            target_staff_ids.append(self.staff.id)
+        if self.group:
+            target_staff_ids.extend(self.group.members.values_list('id', flat=True))
+
+        target_staff_ids = list(set(target_staff_ids))
+
+        for s_id in target_staff_ids:
+            conflicts = Assignment.objects.filter(
+                models.Q(staff_id=s_id) | models.Q(group__members__id=s_id)
+            ).exclude(pk=self.pk).distinct()
+
+            for other in conflicts:
+                if not other.application.event_date or not other.application.event_time:
+                    continue
+                other_start, other_end = self._get_event_intervals(other.application)
+                if curr_start < other_end and curr_end > other_start:
+                    s_obj = Staff.objects.get(id=s_id)
+                    raise ValidationError(
+                        f"Сотрудник {s_obj.full_name} уже занят на другом событии ({other.application.full_name}) до {other_end.strftime('%H:%M')}!"
+                    )
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-
-
-    

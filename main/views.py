@@ -101,13 +101,16 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if raw_category in cat_map:
             data['category'] = cat_map[raw_category]
 
-        tariff_name = data.get('tariff') or data.get('selection')
-        if tariff_name:
-            tariff_obj = Tariff.objects.filter(name=tariff_name).first()
-            if tariff_obj:
-                data['tariff'] = tariff_obj.id
-            else:
-                data['tariff'] = None
+        tariff_val = data.get('tariff')
+        if tariff_val and not str(tariff_val).isdigit():
+            tariff_obj = Tariff.objects.filter(name=tariff_val).first()
+            data['tariff'] = tariff_obj.id if tariff_obj else None
+
+        for field in ['chosen_show', 'chosen_program']:
+            val = data.get(field)
+            if val and not str(val).isdigit():
+                prog = Program.objects.filter(title=val).first()
+                data[field] = prog.id if prog else None
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -184,6 +187,16 @@ class StaffViewSet(viewsets.ModelViewSet):
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        if request.data.get('dry_run'):
+            return Response({"status": "available"}, status=status.HTTP_200_OK)
+            
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class StaffGroupViewSet(viewsets.ModelViewSet):
     queryset = StaffGroup.objects.all()

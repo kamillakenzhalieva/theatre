@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
 </head>
 <body>
 
 <div class="admin-container">
-    
     <div class="sidebar">
         <h2>Админ-панель</h2>
         <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
@@ -28,7 +28,6 @@
             <h1 id="section-title">Спектакли</h1>
             <button class="btn btn-add" id="add-btn" onclick="openCreateModal()">+ Добавить запись</button>
         </div>
-
         <div id="content-area">
             <table class="admin-table">
                 <thead><tr id="table-head"></tr></thead>
@@ -39,22 +38,62 @@
 </div> 
 
 <div id="modal-overlay" class="modal-overlay">
-    <div class="modal-card">
-        <h2 id="modal-title" style="margin-top: 0; font-size: 20px;">Добавить запись</h2>
+    <div class="modal-card1">
+        <h2 id="modal-title" style="margin-top: 0; font-size: 20px;">Редактировать запись</h2>
         <form id="admin-form" enctype="multipart/form-data">
+            {% csrf_token %}
             <input type="hidden" name="id" id="field-id">
+            <input type="hidden" id="field-assigned-id">
+            <input type="hidden" id="field-assigned-type">
+            
             <div id="form-fields"></div>
-            <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
-                <button type="button" class="btn" onclick="closeModal()" style="background: #eee;">Отмена</button>
-                <button type="button" id="approve-btn" class="btn btn-add" onclick="approveApplication()">Одобрить</button>
-                <button type="submit" class="btn btn-add">Сохранить</button>
+            
+            <div style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center;">
+                <div id="assignment-container">
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select-trigger" onclick="toggleAssignMenu(event)">Выберите команду...</div>
+                        <div class="custom-options" id="custom-options-list">
+                            <div class="option-add" onclick="openGroupCreator()">+ Создать команду</div>
+                            <div id="groups-list-area"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" class="btn" onclick="closeModal()" style="background: #eee;">Отмена</button>
+                    <button type="button" id="approve-btn" class="btn btn-add" onclick="approveApplication()">Одобрить</button>
+                    <button type="submit" class="btn btn-add">Сохранить</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
+<div id="group-creator-popup" class="floating-popup" style="display: none;">
+    <div class="popup-header" id="popup-drag">
+        <span>Новая команда</span>
+        <button type="button" onclick="closeGroupCreator()">×</button>
+    </div>
+    <div class="popup-body">
+        <input type="text" id="new-group-name" placeholder="Название команды..." class="form-field-input" style="margin-bottom: 10px;">
+        <div id="staff-checklist" class="checklist"></div>
+        <button type="button" class="btn btn-add" onclick="saveNewGroup()" style="width: 100%; margin-top: 15px;">Создать и выбрать</button>
+    </div>
+</div>
+
+<div id="group-editor-popover" class="floating-popup" style="display: none; width: 250px;">
+    <div class="popup-header">
+        <span>Состав команды</span>
+        <button type="button" onclick="closeGroupEditor()">×</button>
+    </div>
+    <div class="popup-body">
+        <div id="edit-staff-checklist" class="checklist"></div>
+        <button type="button" class="btn btn-add" id="update-group-btn" style="width: 100%; margin-top: 10px;">Обновить состав</button>
+    </div>
+</div>
+
 <script>
     let currentSection = 'events';
+    let selectedTarget = null;
 
     const schema = {
         'home': [
@@ -113,32 +152,79 @@
         ]
     };
 
+    async function getStaffAndGroups() {
+        const [s, g] = await Promise.all([fetch('/api/staff/'), fetch('/api/groups/')]);
+        return { staff: await s.json(), groups: await g.json() };
+    }
+
+    async function filterAvailable(staff, groups, appId) {
+        const avS = [], avG = [];
+        for (const g of groups) {
+            const r = await fetch('/api/assignments/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ application: appId, group: g.id, dry_run: true })
+            });
+            if (r.status === 200) avG.push(g);
+        }
+        for (const s of staff) {
+            const r = await fetch('/api/assignments/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ application: appId, staff: s.id, dry_run: true })
+            });
+            if (r.status === 200) avS.push(s);
+        }
+        return { avS, avG };
+    }
+
+    function toggleAssignMenu(e) {
+        if(e) e.stopPropagation();
+        document.getElementById('custom-options-list').classList.toggle('show');
+    }
+
+    async function refreshGroupsList() {
+        const appId = document.getElementById('field-id').value;
+        const area = document.getElementById('groups-list-area');
+        area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Проверка...</div>';
+        const { staff, groups } = await getStaffAndGroups();
+        const { avG } = await filterAvailable(staff, groups, appId);
+        area.innerHTML = avG.length ? '' : '<div style="padding:10px; font-size:12px; color:#ff6b6b;">Нет свободных команд</div>';
+        avG.forEach(g => {
+            const d = document.createElement('div');
+            d.className = 'option-item';
+            d.style.display = 'flex'; d.style.justifyContent = 'space-between';
+            d.innerHTML = `<span>${g.name}</span> <small style="color: #999; font-size: 10px; cursor:pointer;">ред.</small>`;
+            d.onclick = () => setTarget({ type: 'group', id: g.id, name: g.name });
+            d.querySelector('small').onclick = (e) => { e.stopPropagation(); openGroupEditor(e, g); };
+            area.appendChild(d);
+        });
+    }
+
+    function setTarget(target) {
+        selectedTarget = target;
+        const trigger = document.querySelector('.custom-select-trigger');
+        if (target) {
+            trigger.innerText = target.name;
+            document.getElementById('field-assigned-id').value = target.id;
+            document.getElementById('field-assigned-type').value = target.type;
+        } else {
+            trigger.innerText = "Выберите команду...";
+            document.getElementById('field-assigned-id').value = "";
+            document.getElementById('field-assigned-type').value = "";
+        }
+        document.getElementById('custom-options-list').classList.remove('show');
+    }
+
     async function loadSection(section) {
         currentSection = section;
         const contentArea = document.getElementById('content-area');
         const addBtn = document.getElementById('add-btn');
         const titleEl = document.getElementById('section-title');
-
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('onclick')?.includes(`'${section}'`)) {
-                btn.classList.add('active');
-            }
-        });
-
-        const titles = { 
-            'events': 'Управление спектаклями', 
-            'tariffs': 'Настройка тарифов', 
-            'applications': 'Входящие заявки',
-            'home': 'Главная страница и контакты',
-            'calendar': 'Календарь мероприятий'
-        };
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий' };
         titleEl.innerText = titles[section] || 'Панель управления';
-        
-        if (addBtn) {
-            addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
-        }
-
+        if (addBtn) addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
         if (section === 'calendar') {
             try {
                 const response = await fetch('/calendar-page/');
@@ -151,178 +237,141 @@
                     document.head.appendChild(newScript).parentNode.removeChild(newScript);
                 });
                 setTimeout(() => { if (window.initFullCalendar) window.initFullCalendar(); }, 50);
-            } catch (e) { contentArea.innerHTML = 'Ошибка загрузки страницы календаря'; }
+            } catch (e) { contentArea.innerHTML = 'Ошибка загрузки'; }
             return;
         }
-
         contentArea.innerHTML = `<table class="admin-table"><thead><tr id="table-head"></tr></thead><tbody id="table-body"></tbody></table>`;
-
         try {
             const response = await fetch(`/api/${section}/`);
             const data = await response.json();
             section === 'home' ? renderHomeSection(data) : renderTable(data);
-        } catch (e) {
-            const body = document.getElementById('table-body');
-            if (body) body.innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>';
-        }
+        } catch (e) { document.getElementById('table-body').innerHTML = '<tr><td>Ошибка</td></tr>'; }
     }
 
     function renderTable(data) {
-        const head = document.getElementById('table-head');
-        const body = document.getElementById('table-body');
+        const head = document.getElementById('table-head'), body = document.getElementById('table-body');
         head.innerHTML = ''; body.innerHTML = '';
-
-        if (!data || data.length === 0) {
-            body.innerHTML = '<tr><td colspan="100%" style="text-align:center; padding:30px;">Записей пока нет</td></tr>';
-            return;
-        }
-
+        if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
         const isApp = currentSection === 'applications';
-        const keys = isApp ? ['full_name', 'phone', 'event_date'] : (currentSection === 'events' ? ['id', 'title', 'date', 'price'] : ['id', 'name', 'price', 'category']);
-        const labels = isApp ? ['ИМЯ ЗАКАЗЧИКА', 'НОМЕР', 'ДАТА МЕРОПРИЯТИЯ'] : keys.map(k => k.toUpperCase());
-
-        labels.forEach(label => head.innerHTML += `<th>${label}</th>`);
-        head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
-
+        let keys = isApp ? ['full_name', 'phone', 'event_date'] : (currentSection === 'events' ? ['title', 'date', 'price'] : ['name', 'price', 'category']);
+        let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']);
+        labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
+        head.innerHTML += `<th>ДЕЙСТВИЯ</th>`;
         data.forEach(item => {
             if (isApp && item.status === 'approved') return;
-
-            let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
-            keys.forEach(key => row += `<td>${item[key] || '-'}</td>`);
-            
-            if (isApp) {
-                const statusTranslations = {'pending': 'Новая заявка', 'processing': 'На рассмотрении', 'rejected': 'Отклонено'};
-                row += `
-                    <td class="table-status-wrapper">
-                        <span class="status-badge status-${item.status}">${statusTranslations[item.status] || item.status}</span>
-                        <button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button>
-                    </td>`;
-            } else {
-                let actionButtons = `<button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button>`;
-                actionButtons += `<button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button>`;
-                row += `<td>${actionButtons}</td>`;
-            }
-            row += `</tr>`;
+            let row = `<tr class="clickable-row" onclick="fetchAndOpenModal(${item.id})">`;
+            keys.forEach(k => {
+                let v = item[k] || '-';
+                if (k === 'date' || k === 'event_date') v = formatDate(v);
+                row += `<td>${v}</td>`;
+            });
+            row += `<td><button class="btn btn-edit" onclick="event.stopPropagation(); fetchAndOpenModal(${item.id})">Редактировать</button></td></tr>`;
             body.innerHTML += row;
         });
     }
 
-    function renderHomeSection(data) {
-        const body = document.getElementById('table-body');
-        const item = (Array.isArray(data) && data.length > 0) ? data[0] : (data.id ? data : null);
-        if (!item) { body.innerHTML = '<tr><td style="padding:40px; text-align:center;">Данных нет.</td></tr>'; return; }
-        body.innerHTML = `<tr><td colspan="100%" style="padding: 40px; text-align: center;"><div style="background: white; padding: 30px; border-radius: 20px; display: inline-block; border: 2px solid var(--mint);"><h2 style="margin-top:0;">${item.welcome_text || ''}</h2><p>📍 ${item.address || ''}</p><p>📞 ${item.phone || ''}</p><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})' style="padding: 10px 30px; margin-top:10px;">🔧 Редактировать</button></div></td></tr>`;
+    async function fetchAndOpenModal(id) {
+        try {
+            const response = await fetch(`/api/${currentSection}/${id}/`);
+            const fullItem = await response.json();
+            openEditModal(fullItem);
+        } catch (e) { console.error(e); }
     }
 
-    function generateFormFields(item = null) {
-        const container = document.getElementById('form-fields');
-        container.innerHTML = '';
-        const currentCategory = item ? item.category : '';
-
-        schema[currentSection].forEach(field => {
-            if (currentSection === 'applications' && currentCategory === 'spectacle') {
-                if (['tariff', 'chosen_show', 'chosen_program'].includes(field.name)) return;
-            }
-
-            let val = item ? item[field.name] : '';
-            let inputHtml;
-            const labelClass = 'class="form-field-label"'; 
-
-            if (field.type === 'select') {
-                inputHtml = `<select name="${field.name}" class="form-field-select" ${field.name === 'category' ? 'onchange="refreshModal(this)"' : ''}>
-                    ${field.options.map(opt => `<option value="${opt.value}" ${val === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-                </select>`;
-            } else if (field.type === 'textarea') {
-                inputHtml = `<textarea name="${field.name}" class="form-field-textarea" rows="3">${val || ''}</textarea>`;
-            } else {
-                const isReadOnly = ['tariff', 'chosen_show', 'chosen_program'].includes(field.name) ? 'readonly style="background: #f9f9f9;"' : '';
-                inputHtml = `<input type="${field.type}" name="${field.name}" class="form-field-input" value="${val || ''}" ${isReadOnly}>`;
-            }
-
-            container.insertAdjacentHTML('beforeend', `
-                <div class="form-group">
-                    <label ${labelClass}>${field.label}</label>
-                    ${inputHtml}
-                </div>`);
-        });
-    }
-
-    function openCreateModal() {
-        document.getElementById('modal-title').innerText = "Добавить новую запись";
-        document.getElementById('field-id').value = ''; 
-        document.getElementById('approve-btn').style.display = 'none';
-        generateFormFields();
-        document.getElementById('modal-overlay').style.display = 'flex';
-    }
-
-    function openEditModal(item) {
-        document.getElementById('modal-title').innerText = "Редактировать запись";
-        document.getElementById('field-id').value = item.id; 
+    async function openEditModal(item) {
+        document.getElementById('field-id').value = item.id;
+        const trigger = document.querySelector('.custom-select-trigger');
+        const ab = document.getElementById('approve-btn'), ac = document.getElementById('assignment-container');
         
-        const approveBtn = document.getElementById('approve-btn');
-        if (currentSection === 'applications' && item.status !== 'approved') {
-            approveBtn.style.display = 'block';
+        if (item.assigned_target) {
+            setTarget({ type: item.assigned_target.type, id: item.assigned_target.id, name: item.assigned_target.name });
         } else {
-            approveBtn.style.display = 'none';
+            setTarget(null);
         }
-        
+
         generateFormFields(item);
+        if (currentSection === 'applications' || currentSection === 'events') {
+            ac.style.display = 'block';
+            await refreshGroupsList();
+        } else { ac.style.display = 'none'; }
+        ab.style.display = (currentSection === 'applications' && item.status !== 'approved') ? 'block' : 'none';
         document.getElementById('modal-overlay').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('admin-form').reset();
-    }
-
-    function refreshModal(selectElement) {
-        const formData = new FormData(document.getElementById('admin-form'));
-        const currentItem = Object.fromEntries(formData.entries());
-        generateFormFields(currentItem);
     }
 
     document.getElementById('admin-form').onsubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const id = document.getElementById('field-id').value;
-        const url = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`;
-        const method = id ? 'PUT' : 'POST';
+        const fd = new FormData(e.target), id = document.getElementById('field-id').value;
+        const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
+        const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
+        
+        if (r.ok) {
+            const savedItem = await r.json();
+            const targetId = document.getElementById('field-assigned-id').value;
+            const targetType = document.getElementById('field-assigned-type').value;
 
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: formData
-        });
-
-        if (response.ok) { closeModal(); loadSection(currentSection); }
-        else { alert('Ошибка при сохранении'); }
+            if (targetId && (currentSection === 'applications' || currentSection === 'events')) {
+                await fetch('/api/assignments/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ application: id || savedItem.id, [targetType]: targetId })
+                });
+            }
+            closeModal(); loadSection(currentSection); 
+        } else alert('Ошибка');
     };
 
-    async function deleteItem(id) {
-        if (confirm('Удалить эту запись?')) {
-            await fetch(`/api/${currentSection}/${id}/`, {
-                method: 'DELETE',
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            });
-            loadSection(currentSection);
-        }
+    function generateFormFields(item = null) {
+        const container = document.getElementById('form-fields');
+        container.innerHTML = '';
+        const cat = item ? item.category : '';
+        schema[currentSection].forEach(field => {
+            if (currentSection === 'applications' && cat === 'spectacle' && ['tariff', 'chosen_show', 'chosen_program'].includes(field.name)) return;
+            let val = item ? item[field.name] : '';
+            if (val && (field.type === 'date' || field.type === 'time')) {
+                const d = new Date(val);
+                if (!isNaN(d.getTime())) {
+                    if (field.type === 'date') val = d.toLocaleDateString('en-CA');
+                    else val = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                }
+            }
+            let html;
+            if (field.type === 'select') {
+                html = `<select name="${field.name}" class="form-field-select" ${field.name === 'category' ? 'onchange="refreshModal()"' : ''}>${field.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
+            } else if (field.type === 'textarea') {
+                html = `<textarea name="${field.name}" class="form-field-textarea" rows="3">${val || ''}</textarea>`;
+            } else if (field.type === 'checkbox') {
+                html = `<input type="checkbox" name="${field.name}" class="form-field-checkbox" ${val === true ? 'checked' : ''}>`;
+            } else {
+                const ro = ['tariff', 'chosen_show', 'chosen_program'].includes(field.name) ? 'readonly style="background: #f9f9f9;"' : '';
+                html = `<input type="${field.type}" name="${field.name}" class="form-field-input" value="${val || ''}" ${ro}>`;
+            }
+            container.insertAdjacentHTML('beforeend', `<div class="form-group"><label class="form-field-label">${field.label}</label>${html}</div>`);
+        });
     }
+
+    function formatDate(iso) { 
+        if(!iso) return '-'; const d = new Date(iso); 
+        return isNaN(d.getTime()) ? iso : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`; 
+    }
+    function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('admin-form').reset(); }
+    function openCreateModal() { document.getElementById('modal-title').innerText="Добавить"; document.getElementById('field-id').value=''; setTarget(null); generateFormFields(); document.getElementById('modal-overlay').style.display='flex'; }
+    function refreshModal() { generateFormFields(Object.fromEntries(new FormData(document.getElementById('admin-form')).entries())); }
 
     async function approveApplication() {
         const id = document.getElementById('field-id').value;
-        if (!id || !confirm('Одобрить заявку? Она уйдет в календарь.')) return;
-        const formData = new FormData();
-        formData.append('status', 'approved');
-        const response = await fetch(`/api/applications/${id}/`, {
-            method: 'PATCH',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: formData
-        });
-        if (response.ok) { closeModal(); loadSection('applications'); }
+        if (!id || !confirm('Одобрить?')) return;
+        await fetch(`/api/applications/${id}/`, { method: 'PATCH', headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }, body: JSON.stringify({status: 'approved'}) });
+        if (selectedTarget) {
+            await fetch('/api/assignments/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, body: JSON.stringify({ application: id, [selectedTarget.type]: selectedTarget.id }) });
+        }
+        closeModal(); loadSection('applications');
     }
+
+    document.addEventListener('click', (e) => { 
+        if(!e.target.closest('.custom-select-wrapper')) document.getElementById('custom-options-list').classList.remove('show');
+    });
 
     loadSection('events');
 </script>
-
 </body>
 </html>

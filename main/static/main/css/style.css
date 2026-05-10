@@ -86,18 +86,34 @@ body {
     border-collapse: collapse;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    table-layout: fixed;
 }
 
 .admin-table th {
     background: var(--mint);
     padding: 15px;
-    text-align: left;
+    text-align: center;
+    vertical-align: middle;
     font-size: 14px;
 }
 
 .admin-table td {
-    padding: 15px;
+    text-align: center;
+    padding: 12px 15px;
+    vertical-align: middle;
     border-bottom: 1px solid #eee;
+    word-wrap: break-word;
+}
+
+.admin-table td:last-child {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.admin-table th:last-child {
+    width: 400px;
 }
 
 .btn {
@@ -141,16 +157,20 @@ body {
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(4px);
+    padding: 20px;
 }
 
-.modal-card {
+.modal-card1 {
     background: white;
-    width: 500px;
-    padding: 30px;
     border-radius: 20px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    max-height: 90vh;
-    overflow-y: auto;
+    z-index: 10000;
+    padding: 25px;
+    width: 100%;
+    max-width: 700px; /* Сделали пошире (было обычно 500-600) */
+    max-height: 90vh; /* Максимальная высота - 90% от высоты экрана */
+    display: flex;
+    flex-direction: column; /* Располагаем заголовок, форму и кнопки вертикально */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
 .form-group {
@@ -805,6 +825,14 @@ nav a:hover {
     display: grid;
     grid-template-columns: 1fr 1fr; 
     gap: 15px;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 10px;
+    align-content: start;
+}
+
+.form-group {
+    margin-bottom: 12px;
 }
 
 .form-group.full-width {
@@ -823,9 +851,10 @@ nav a:hover {
 .form-field-select, 
 .form-field-textarea {
     width: 100%;
-    padding: 10px;
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
+    font-size: 14px;
     box-sizing: border-box;
 }
 
@@ -968,6 +997,8 @@ nav a:hover {
 }
 
 .modal-card {
+    background-color: #ffffff !important;
+    border-radius: 20px;
     display: flex;
     flex-direction: column;
     overflow: hidden; 
@@ -977,4 +1008,79 @@ nav a:hover {
 .modal-body {
     overflow-y: auto;
     max-height: 70vh;
+}
+
+
+/* Кастомный селект */
+.custom-select-wrapper { position: relative; user-select: none; }
+.custom-select-trigger {
+    padding: 10px 15px;
+    border: 2px solid var(--mint);
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 220px;
+}
+.custom-options {
+    position: absolute;
+    bottom: calc(100% + 5px); /* Открывается ВВЕРХ */
+    left: 0; right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 1100;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.custom-options.show { display: block; }
+.option-item, .option-add {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: 0.2s;
+}
+.option-add { color: var(--mint); font-weight: bold; border-bottom: 2px solid #eee; }
+.option-item:hover, .option-add:hover { background: #f0fff4; }
+
+/* Плавающее окно */
+.floating-popup {
+    position: fixed;
+    top: 20%; left: 50%;
+    width: 300px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 1200;
+    border: 1px solid #ccc;
+}
+.popup-header {
+    padding: 10px 15px;
+    background: #f8f8f8;
+    border-radius: 12px 12px 0 0;
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+}
+.popup-body { padding: 15px; }
+.checklist {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 10px;
+    border: 1px solid #eee;
+    padding: 5px;
+}
+.check-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
+
+#group-editor-popover {
+    z-index: 2100; /* Должен быть выше, чем основная модалка */
+    box-shadow: 5px 5px 20px rgba(0,0,0,0.2);
+}
+
+.option-item small:hover {
+    color: var(--mint) !important;
+    text-decoration: underline;
 }

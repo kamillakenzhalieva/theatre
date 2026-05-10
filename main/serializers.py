@@ -31,6 +31,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     tariff = serializers.StringRelatedField()
     chosen_show = serializers.StringRelatedField()
     chosen_program = serializers.StringRelatedField()
+    assigned_target = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
@@ -40,8 +41,19 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'tariff', 'tariff_name', 
             'chosen_show', 'show_name',
             'chosen_program', 'program_name',
-            'guests_count', 'message', 'status', 'created_at'
+            'guests_count', 'message', 'status', 'created_at',
+            'assigned_target'
         ]
+    
+    def get_assigned_target(self, obj):
+        from .models import Assignment
+        assign = Assignment.objects.filter(application=obj).first()
+        if assign:
+            if assign.group:
+                return {'type': 'group', 'id': assign.group.id, 'name': assign.group.name}
+            if assign.staff:
+                return {'type': 'staff', 'id': assign.staff.id, 'name': assign.staff.full_name}
+        return None
 
 class StaffSerializer(serializers.ModelSerializer):
     class Meta:

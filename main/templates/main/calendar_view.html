@@ -76,7 +76,6 @@
                     const time = event.start.includes('T') ? event.start.split('T')[1].substring(0, 5) : '--:--';
                     const type = event.extendedProps ? (event.extendedProps.type || event.type) : event.type;
 
-                    // Используем структуру popover-item -> popover-time для соответствия CSS
                     return `
                         <div class="popover-item" onclick="openEventDetail('${event.id}', '${type}')">
                             <div class="popover-time">${time}</div>

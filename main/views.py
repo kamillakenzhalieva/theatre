@@ -6,7 +6,9 @@ from .serializers import (
     HomePageSerializer, EventSerializer, ServiceSerializer, 
     TariffSerializer, ApplicationSerializer, AssignmentSerializer, StaffSerializer, StaffGroupSerializer
 )
+from rest_framework.decorators import action
 import datetime
+from django.db.models import Q  
 import re
 from django.http import JsonResponse
 from datetime import timedelta
@@ -183,6 +185,33 @@ def get_service_data(request):
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = Staff.objects.all()
     serializer_class = StaffSerializer
+
+    @action(detail=True, methods=['get'])
+    def busy_dates(self, request, pk=None):
+        staff = self.get_object()
+        
+        assignments = Assignment.objects.filter(
+            Q(staff=staff) | Q(group__members=staff)
+        ).select_related('application', 'application__tariff').distinct()
+
+        events = []
+        for a in assignments:
+            app = a.application
+            if app.event_date and app.event_time:
+                start_dt, end_dt = a._get_event_intervals(app)
+                
+                events.append({
+                    'title': f"{app.category}",
+                    'start': start_dt.isoformat(),
+                    'end': end_dt.isoformat(),
+                    'allDay': False,
+                    'backgroundColor': '#ffe5e5',
+                    'textColor': '#d32f2f',
+                    'borderColor': '#ffcccc'
+                })
+        
+        print(f"Отправлено событий для {str(staff)}: {len(events)}")
+        return Response(events)
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()

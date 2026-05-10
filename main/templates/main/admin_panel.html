@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="{% static 'main/css/style.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-
 </head>
 <body>
 
@@ -17,6 +16,7 @@
         <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
         <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
         <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
+        <button class="nav-btn" onclick="loadSection('staff')">👥 Сотрудники</button>
         <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
         <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
         <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
@@ -41,13 +41,8 @@
     <div class="modal-card1">
         <h2 id="modal-title" style="margin-top: 0; font-size: 20px;">Редактировать запись</h2>
         <form id="admin-form" enctype="multipart/form-data">
-            {% csrf_token %}
             <input type="hidden" name="id" id="field-id">
-            <input type="hidden" id="field-assigned-id">
-            <input type="hidden" id="field-assigned-type">
-            
             <div id="form-fields"></div>
-            
             <div style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center;">
                 <div id="assignment-container">
                     <div class="custom-select-wrapper">
@@ -89,6 +84,15 @@
         <div id="edit-staff-checklist" class="checklist"></div>
         <button type="button" class="btn btn-add" id="update-group-btn" style="width: 100%; margin-top: 10px;">Обновить состав</button>
     </div>
+    <div style="position: absolute; left: -10px; top: 20px; width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-right: 10px solid white;"></div>
+</div>
+
+<div id="staff-calendar-popover" class="staff-popover-calendar" style="display: none;">
+    <div class="staff-popover-header">
+        <span id="staff-cal-name">Сотрудник</span>
+        <button onclick="closeStaffCalendar()" style="border:none; background:none; cursor:pointer;">×</button>
+    </div>
+    <div id="staff-mini-calendar"></div>
 </div>
 
 <script>
@@ -149,6 +153,10 @@
             { name: 'chosen_program', label: 'Интерактив', type: 'text' },
             { name: 'guests_count', label: 'Кол-во гостей', type: 'number' },
             { name: 'message', label: 'Комментарий', type: 'textarea' }
+        ],
+        'staff': [
+            { name: 'full_name', label: 'ФИО сотрудника', type: 'text' },
+            { name: 'role', label: 'Роль (актер, ведущий и т.д.)', type: 'text' }
         ]
     };
 
@@ -187,34 +195,103 @@
         const appId = document.getElementById('field-id').value;
         const area = document.getElementById('groups-list-area');
         area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Проверка...</div>';
+        
         const { staff, groups } = await getStaffAndGroups();
         const { avG } = await filterAvailable(staff, groups, appId);
+        
         area.innerHTML = avG.length ? '' : '<div style="padding:10px; font-size:12px; color:#ff6b6b;">Нет свободных команд</div>';
         avG.forEach(g => {
             const d = document.createElement('div');
             d.className = 'option-item';
-            d.style.display = 'flex'; d.style.justifyContent = 'space-between';
+            d.style.display = 'flex';
+            d.style.justifyContent = 'space-between';
             d.innerHTML = `<span>${g.name}</span> <small style="color: #999; font-size: 10px; cursor:pointer;">ред.</small>`;
-            d.onclick = () => setTarget({ type: 'group', id: g.id, name: g.name });
+            d.ondblclick = (e) => { e.stopPropagation(); renameGroup(g.id, g.name); };
+            d.onclick = () => {
+                selectedTarget = { type: 'group', id: g.id };
+                document.querySelector('.custom-select-trigger').innerText = g.name;
+                toggleAssignMenu();
+            };
             d.querySelector('small').onclick = (e) => { e.stopPropagation(); openGroupEditor(e, g); };
             area.appendChild(d);
         });
     }
 
-    function setTarget(target) {
-        selectedTarget = target;
-        const trigger = document.querySelector('.custom-select-trigger');
-        if (target) {
-            trigger.innerText = target.name;
-            document.getElementById('field-assigned-id').value = target.id;
-            document.getElementById('field-assigned-type').value = target.type;
-        } else {
-            trigger.innerText = "Выберите команду...";
-            document.getElementById('field-assigned-id').value = "";
-            document.getElementById('field-assigned-type').value = "";
-        }
-        document.getElementById('custom-options-list').classList.remove('show');
+    async function openGroupEditor(e, group) {
+        const appId = document.getElementById('field-id').value;
+        const { staff } = await getStaffAndGroups();
+        const { avS } = await filterAvailable(staff, [], appId);
+        const pop = document.getElementById('group-editor-popover');
+        const cl = document.getElementById('edit-staff-checklist');
+        const rect = e.target.getBoundingClientRect();
+        
+        pop.style.display = 'block';
+        pop.style.top = `${rect.top - 10}px`;
+        pop.style.left = `${rect.right + 15}px`;
+        pop.style.transform = 'none';
+
+        cl.innerHTML = staff.map(s => {
+            const isMem = group.members.includes(s.id);
+            const isAv = avS.some(av => av.id === s.id) || isMem;
+            if (!isAv) return '';
+            return `<label class="check-item"><input type="checkbox" name="edit-staff-check" value="${s.id}" ${isMem ? 'checked' : ''}> ${s.full_name}</label>`;
+        }).join('');
+
+        document.getElementById('update-group-btn').onclick = async () => {
+            const ids = Array.from(document.querySelectorAll('input[name="edit-staff-check"]:checked')).map(i => i.value);
+            if (!ids.length) return alert("Выберите сотрудников");
+            const r = await fetch(`/api/groups/${group.id}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ members: ids })
+            });
+            if (r.ok) { closeGroupEditor(); refreshGroupsList(); }
+        };
     }
+
+    function closeGroupEditor() { document.getElementById('group-editor-popover').style.display = 'none'; }
+
+    async function renameGroup(id, old) {
+        const n = prompt("Новое название:", old);
+        if (n && n !== old) {
+            await fetch(`/api/groups/${id}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ name: n })
+            });
+            refreshGroupsList();
+        }
+    }
+
+    async function openGroupCreator() {
+        const appId = document.getElementById('field-id').value;
+        const { staff } = await getStaffAndGroups();
+        const { avS } = await filterAvailable(staff, [], appId);
+        const cl = document.getElementById('staff-checklist');
+        cl.innerHTML = avS.length ? avS.map(s => `<label class="check-item"><input type="checkbox" name="staff-check" value="${s.id}"> ${s.full_name}</label>`).join('') : '<div style="font-size:12px; color:red; padding:10px;">Нет свободных сотрудников</div>';
+        document.getElementById('group-creator-popup').style.display = 'block';
+        toggleAssignMenu();
+    }
+
+    async function saveNewGroup() {
+        const name = document.getElementById('new-group-name').value;
+        const ids = Array.from(document.querySelectorAll('input[name="staff-check"]:checked')).map(i => i.value);
+        if(!name || !ids.length) return alert("Заполните данные");
+        const r = await fetch('/api/groups/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ name: name, members: ids })
+        });
+        if(r.ok) {
+            const ng = await r.json();
+            closeGroupCreator();
+            await refreshGroupsList();
+            selectedTarget = { type: 'group', id: ng.id };
+            document.querySelector('.custom-select-trigger').innerText = name;
+        }
+    }
+
+    function closeGroupCreator() { document.getElementById('group-creator-popup').style.display = 'none'; }
 
     async function loadSection(section) {
         currentSection = section;
@@ -222,9 +299,9 @@
         const addBtn = document.getElementById('add-btn');
         const titleEl = document.getElementById('section-title');
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий' };
+        const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий', 'staff': 'Сотрудники театра' };
         titleEl.innerText = titles[section] || 'Панель управления';
-        if (addBtn) addBtn.style.display = (['events', 'tariffs'].includes(section)) ? 'block' : 'none';
+        if (addBtn) addBtn.style.display = (['events', 'tariffs', 'staff'].includes(section)) ? 'block' : 'none';
         if (section === 'calendar') {
             try {
                 const response = await fetch('/calendar-page/');
@@ -248,77 +325,65 @@
         } catch (e) { document.getElementById('table-body').innerHTML = '<tr><td>Ошибка</td></tr>'; }
     }
 
+    function formatDate(isoString) {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return isoString;
+        const d = String(date.getDate()).padStart(2, '0'), m = String(date.getMonth() + 1).padStart(2, '0'), y = date.getFullYear();
+        const h = String(date.getHours()).padStart(2, '0'), min = String(date.getMinutes()).padStart(2, '0');
+        return `${d}.${m}.${y} ${h}:${min}`;
+    }
+
     function renderTable(data) {
         const head = document.getElementById('table-head'), body = document.getElementById('table-body');
         head.innerHTML = ''; body.innerHTML = '';
         if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
+
         const isApp = currentSection === 'applications';
-        let keys = isApp ? ['full_name', 'phone', 'event_date'] : (currentSection === 'events' ? ['title', 'date', 'price'] : ['name', 'price', 'category']);
-        let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']);
+        
+        let keys = isApp ? ['full_name', 'phone', 'event_date'] : 
+                (currentSection === 'events' ? ['title', 'date', 'price'] : 
+                (currentSection === 'staff' ? ['full_name', 'role', 'calendar_btn'] : ['name', 'price', 'category']));
+
+        let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : 
+                    (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : 
+                    (currentSection === 'staff' ? ['ИМЯ', 'РОЛЬ', 'ГРАФИК'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']));
+
         labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
-        head.innerHTML += `<th>ДЕЙСТВИЯ</th>`;
+        head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
+
         data.forEach(item => {
             if (isApp && item.status === 'approved') return;
-            let row = `<tr class="clickable-row" onclick="fetchAndOpenModal(${item.id})">`;
+            let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
+            
             keys.forEach(k => {
-                let v = item[k] || '-';
-                if (k === 'date' || k === 'event_date') v = formatDate(v);
-                row += `<td>${v}</td>`;
+                if (k === 'calendar_btn') {
+                    row += `<td><button class="staff-calendar-trigger" onclick="event.stopPropagation(); openStaffCalendar(event, ${item.id}, '${item.full_name}')">📅 Календарь</button></td>`;
+                } else if (k === 'role') {
+                    row += `<td><button class="staff-minor-btn" onclick="event.stopPropagation();">посмотреть</button></td>`;
+                } else {
+                    let v = item[k] || '-';
+                    if (k === 'date' || k === 'event_date') v = formatDate(v);
+                    row += `<td>${v}</td>`;
+                }
             });
-            row += `<td><button class="btn btn-edit" onclick="event.stopPropagation(); fetchAndOpenModal(${item.id})">Редактировать</button></td></tr>`;
+
+            if (isApp) {
+                const trans = {'pending': 'Новая', 'processing': 'В работе', 'rejected': 'Отказ'};
+                row += `<td class="table-status-wrapper"><span class="status-badge status-${item.status}">${trans[item.status] || item.status}</span><button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button></td>`;
+            } else {
+                row += `<td><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button><button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button></td>`;
+            }
+            row += `</tr>`;
             body.innerHTML += row;
         });
     }
 
-    async function fetchAndOpenModal(id) {
-        try {
-            const response = await fetch(`/api/${currentSection}/${id}/`);
-            const fullItem = await response.json();
-            openEditModal(fullItem);
-        } catch (e) { console.error(e); }
+    function renderHomeSection(data) {
+        const body = document.getElementById('table-body'), item = (Array.isArray(data) && data.length > 0) ? data[0] : (data.id ? data : null);
+        if (!item) { body.innerHTML = '<tr><td>Нет данных</td></tr>'; return; }
+        body.innerHTML = `<tr><td colspan="100%" style="padding: 40px; text-align: center;"><div style="background: white; padding: 30px; border-radius: 20px; display: inline-block; border: 2px solid var(--mint);"><h2>${item.welcome_text || ''}</h2><p>📍 ${item.address || ''}</p><p>📞 ${item.phone || ''}</p><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>🔧 Редактировать</button></div></td></tr>`;
     }
-
-    async function openEditModal(item) {
-        document.getElementById('field-id').value = item.id;
-        const trigger = document.querySelector('.custom-select-trigger');
-        const ab = document.getElementById('approve-btn'), ac = document.getElementById('assignment-container');
-        
-        if (item.assigned_target) {
-            setTarget({ type: item.assigned_target.type, id: item.assigned_target.id, name: item.assigned_target.name });
-        } else {
-            setTarget(null);
-        }
-
-        generateFormFields(item);
-        if (currentSection === 'applications' || currentSection === 'events') {
-            ac.style.display = 'block';
-            await refreshGroupsList();
-        } else { ac.style.display = 'none'; }
-        ab.style.display = (currentSection === 'applications' && item.status !== 'approved') ? 'block' : 'none';
-        document.getElementById('modal-overlay').style.display = 'flex';
-    }
-
-    document.getElementById('admin-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const fd = new FormData(e.target), id = document.getElementById('field-id').value;
-        const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
-        const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
-        
-        if (r.ok) {
-            const savedItem = await r.json();
-            const targetId = document.getElementById('field-assigned-id').value;
-            const targetType = document.getElementById('field-assigned-type').value;
-
-            if (targetId && (currentSection === 'applications' || currentSection === 'events')) {
-                await fetch('/api/assignments/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                    body: JSON.stringify({ application: id || savedItem.id, [targetType]: targetId })
-                });
-            }
-            closeModal(); loadSection(currentSection); 
-        } else alert('Ошибка');
-    };
 
     function generateFormFields(item = null) {
         const container = document.getElementById('form-fields');
@@ -326,7 +391,8 @@
         const cat = item ? item.category : '';
         schema[currentSection].forEach(field => {
             if (currentSection === 'applications' && cat === 'spectacle' && ['tariff', 'chosen_show', 'chosen_program'].includes(field.name)) return;
-            let val = item ? item[field.name] : '';
+            let sk = (currentSection === 'events' && field.name === 'time') ? 'date' : field.name;
+            let val = item ? item[sk] : '';
             if (val && (field.type === 'date' || field.type === 'time')) {
                 const d = new Date(val);
                 if (!isNaN(d.getTime())) {
@@ -336,11 +402,11 @@
             }
             let html;
             if (field.type === 'select') {
-                html = `<select name="${field.name}" class="form-field-select" ${field.name === 'category' ? 'onchange="refreshModal()"' : ''}>${field.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
+                html = `<select name="${field.name}" class="form-field-select" ${field.name === 'category' ? 'onchange="refreshModal(this)"' : ''}>${field.options.map(o => `<option value="${o.value}" ${val === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
             } else if (field.type === 'textarea') {
                 html = `<textarea name="${field.name}" class="form-field-textarea" rows="3">${val || ''}</textarea>`;
             } else if (field.type === 'checkbox') {
-                html = `<input type="checkbox" name="${field.name}" class="form-field-checkbox" ${val === true ? 'checked' : ''}>`;
+                html = `<input type="checkbox" name="${field.name}" class="form-field-checkbox" ${val === true || val === 'true' ? 'checked' : ''}>`;
             } else {
                 const ro = ['tariff', 'chosen_show', 'chosen_program'].includes(field.name) ? 'readonly style="background: #f9f9f9;"' : '';
                 html = `<input type="${field.type}" name="${field.name}" class="form-field-input" value="${val || ''}" ${ro}>`;
@@ -349,27 +415,161 @@
         });
     }
 
-    function formatDate(iso) { 
-        if(!iso) return '-'; const d = new Date(iso); 
-        return isNaN(d.getTime()) ? iso : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`; 
+    function openCreateModal() {
+        document.getElementById('modal-title').innerText = "Добавить запись";
+        document.getElementById('field-id').value = ''; 
+        document.getElementById('approve-btn').style.display = 'none';
+        document.getElementById('assignment-container').style.display = 'none';
+        generateFormFields();
+        document.getElementById('modal-overlay').style.display = 'flex';
     }
+
+    async function openEditModal(item) {
+        document.getElementById('modal-title').innerText = "Редактировать запись";
+        document.getElementById('field-id').value = item.id;
+        
+        selectedTarget = null;
+        const trigger = document.querySelector('.custom-select-trigger');
+        trigger.innerText = "Выберите команду...";
+        
+        const ab = document.getElementById('approve-btn'), ac = document.getElementById('assignment-container');
+        generateFormFields(item);
+        
+        if (currentSection === 'applications' || currentSection === 'events') {
+            ac.style.display = 'block';
+            
+            try {
+                const res = await fetch(`/api/assignments/?application=${item.id}`);
+                const assignments = await res.json();
+                
+                if (assignments.length > 0) {
+                    const active = assignments[0]; 
+                    if (active.group_details) {
+                        selectedTarget = { type: 'group', id: active.group };
+                        trigger.innerText = active.group_details.name;
+                    } else if (active.staff_details) {
+                        selectedTarget = { type: 'staff', id: active.staff };
+                        trigger.innerText = active.staff_details.full_name;
+                    }
+                }
+            } catch (e) { console.error("Ошибка загрузки назначения:", e); }
+            
+            await refreshGroupsList();
+        } else { ac.style.display = 'none'; }
+        
+        ab.style.display = (currentSection === 'applications' && item.status !== 'approved') ? 'block' : 'none';
+        document.getElementById('modal-overlay').style.display = 'flex';
+    }
+
     function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('admin-form').reset(); }
-    function openCreateModal() { document.getElementById('modal-title').innerText="Добавить"; document.getElementById('field-id').value=''; setTarget(null); generateFormFields(); document.getElementById('modal-overlay').style.display='flex'; }
     function refreshModal() { generateFormFields(Object.fromEntries(new FormData(document.getElementById('admin-form')).entries())); }
+
+    document.getElementById('admin-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target), id = document.getElementById('field-id').value;
+        const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
+        const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
+        if (r.ok) {
+            const savedItem = await r.json();
+            if (selectedTarget && (currentSection === 'applications' || currentSection === 'events')) {
+                const aData = { application: id || savedItem.id, [selectedTarget.type]: selectedTarget.id };
+                const ar = await fetch('/api/assignments/', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, 
+                    body: JSON.stringify(aData) 
+                });
+                if(!ar.ok) { const e = await ar.json(); alert(e.non_field_errors?.[0] || 'Конфликт времени'); }
+            }
+            closeModal(); loadSection(currentSection); 
+        } else alert('Ошибка');
+    };
+
+    async function deleteItem(id) { if (confirm('Удалить?')) { await fetch(`/api/${currentSection}/${id}/`, { method: 'DELETE', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }); loadSection(currentSection); } }
 
     async function approveApplication() {
         const id = document.getElementById('field-id').value;
         if (!id || !confirm('Одобрить?')) return;
-        await fetch(`/api/applications/${id}/`, { method: 'PATCH', headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }, body: JSON.stringify({status: 'approved'}) });
-        if (selectedTarget) {
-            await fetch('/api/assignments/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, body: JSON.stringify({ application: id, [selectedTarget.type]: selectedTarget.id }) });
+        const fd = new FormData(); fd.append('status', 'approved');
+        const r = await fetch(`/api/applications/${id}/`, { method: 'PATCH', headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
+        if (r.ok && selectedTarget) {
+            const data = { application: id, [selectedTarget.type]: selectedTarget.id };
+            const ar = await fetch('/api/assignments/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, body: JSON.stringify(data) });
+            if (!ar.ok) { const e = await ar.json(); alert(e.non_field_errors?.[0] || 'Конфликт времени'); }
         }
         closeModal(); loadSection('applications');
     }
 
     document.addEventListener('click', (e) => { 
         if(!e.target.closest('.custom-select-wrapper')) document.getElementById('custom-options-list').classList.remove('show');
+        if(!e.target.closest('#group-editor-popover') && !e.target.closest('.option-item')) closeGroupEditor();
     });
+    
+    const creatorP = document.getElementById("group-creator-popup"), creatorH = document.getElementById("popup-drag");
+    let o = [0,0], d = false;
+    creatorH.addEventListener('mousedown', (e) => { d = true; o = [creatorP.offsetLeft - e.clientX, creatorP.offsetTop - e.clientY]; });
+    document.addEventListener('mouseup', () => d = false);
+    document.addEventListener('mousemove', (e) => { if (d) { creatorP.style.left = (e.clientX + o[0]) + 'px'; creatorP.style.top = (e.clientY + o[1]) + 'px'; creatorP.style.transform = 'none'; } });
+
+    let miniCalendar = null;
+
+    async function openStaffCalendar(event, staffId, staffName) {
+        event.stopPropagation();
+        const popover = document.getElementById('staff-calendar-popover');
+        const calendarEl = document.getElementById('staff-mini-calendar');
+        const rect = event.target.getBoundingClientRect();
+        
+        document.getElementById('staff-cal-name').innerText = staffName;
+        popover.style.display = 'block';
+        popover.style.top = `${rect.bottom + window.scrollY + 10}px`;
+        popover.style.left = `${rect.left + window.scrollX - 100}px`;
+
+        try {
+            if (miniCalendar) {
+                miniCalendar.destroy();
+                miniCalendar = null;
+            }
+
+            const response = await fetch(`/api/staff/${staffId}/busy_dates/`);
+            const events = await response.json();
+
+            setTimeout(() => {
+                miniCalendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                    height: 'auto',
+                    contentHeight: 'auto',
+                    locale: 'ru',
+                    firstDay: 1,
+                    events: events, 
+                    displayEventTime: true,
+                    eventTimeFormat: { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        meridiem: false,
+                        hour12: false 
+                    },
+                    eventDidMount: function(info) {
+                        info.el.title = info.event.title;
+                    }
+                });
+                
+                miniCalendar.render();
+                setTimeout(() => miniCalendar.updateSize(), 50); 
+            }, 10);
+
+        } catch (e) {
+            calendarEl.innerHTML = '<div style="padding:20px; color:red;">Ошибка загрузки дат</div>';
+            console.error(e);
+        }
+    }
+
+    function closeStaffCalendar() {
+        document.getElementById('staff-calendar-popover').style.display = 'none';
+    }
+
+    function viewStaffDetails(id) {
+        alert("Функционал просмотра профиля сотрудника ID:" + id + " в разработке");
+    }
 
     loadSection('events');
 </script>

@@ -166,10 +166,10 @@ body {
     z-index: 10000;
     padding: 25px;
     width: 100%;
-    max-width: 700px; /* Сделали пошире (было обычно 500-600) */
-    max-height: 90vh; /* Максимальная высота - 90% от высоты экрана */
+    max-width: 700px; 
+    max-height: 90vh; 
     display: flex;
-    flex-direction: column; /* Располагаем заголовок, форму и кнопки вертикально */
+    flex-direction: column; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
@@ -1011,7 +1011,6 @@ nav a:hover {
 }
 
 
-/* Кастомный селект */
 .custom-select-wrapper { position: relative; user-select: none; }
 .custom-select-trigger {
     padding: 10px 15px;
@@ -1024,7 +1023,7 @@ nav a:hover {
 }
 .custom-options {
     position: absolute;
-    bottom: calc(100% + 5px); /* Открывается ВВЕРХ */
+    bottom: calc(100% + 5px); 
     left: 0; right: 0;
     background: white;
     border: 1px solid #ddd;
@@ -1045,7 +1044,6 @@ nav a:hover {
 .option-add { color: var(--mint); font-weight: bold; border-bottom: 2px solid #eee; }
 .option-item:hover, .option-add:hover { background: #f0fff4; }
 
-/* Плавающее окно */
 .floating-popup {
     position: fixed;
     top: 20%; left: 50%;
@@ -1076,11 +1074,133 @@ nav a:hover {
 .check-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
 
 #group-editor-popover {
-    z-index: 2100; /* Должен быть выше, чем основная модалка */
+    z-index: 2100; 
     box-shadow: 5px 5px 20px rgba(0,0,0,0.2);
 }
 
 .option-item small:hover {
     color: var(--mint) !important;
     text-decoration: underline;
+}
+
+
+.staff-view-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.staff-view-btn:hover { background: #e0e0e0; }
+
+.staff-cal-trigger {
+    background: white;
+    border: 1px solid var(--mint); 
+    color: #555;
+    padding: 5px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.staff-popover-calendar {
+    width: 325px !important; 
+    height: 400px;
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    padding: 15px;
+    width: 300px;
+    border: 1px solid #eee;
+    z-index: 1000;
+}
+
+.staff-popover-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.staff-calendar-trigger {
+    background: #eefaf7;
+    color: #2d7a6a;
+    border: 1px solid #c2e0d8;
+    padding: 6px 12px;
+    border-radius: 20px; 
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.staff-calendar-trigger:hover {
+    background: #dceff9;
+    border-color: #a3cfbb;
+}
+
+.staff-minor-btn {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    text-transform: lowercase;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: background 0.2s;
+}
+
+.staff-minor-btn:hover {
+    background: #e5e7eb;
+}
+
+td .staff-minor-btn {
+    vertical-align: middle;
+}
+#staff-mini-calendar {
+    max-width: 100%;
+    font-size: 11px; 
+}
+
+#staff-mini-calendar .fc-col-header-cell-cushion {
+    padding: 4px 0 !important;
+    font-size: 10px;
+}
+
+#staff-mini-calendar .fc-scrollgrid {
+    border: none !important;
+}
+
+#staff-mini-calendar .fc-toolbar {
+    margin-bottom: 5px !important;
+    gap: 5px;
+}
+
+#staff-mini-calendar .fc-toolbar-title {
+    font-size: 13px !important;
+    font-weight: bold;
+}
+
+#staff-mini-calendar .fc-button {
+    padding: 2px 5px !important;
+    font-size: 10px !important;
+}
+
+.fc-event {
+    border-radius: 4px !important;
+    font-size: 10px !important;
+    padding: 1px 3px !important;
 }

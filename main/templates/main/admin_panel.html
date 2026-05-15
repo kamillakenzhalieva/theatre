@@ -13,12 +13,12 @@
 <div class="admin-container">
     <div class="sidebar">
         <h2>Админ-панель</h2>
-        <button class="nav-btn active" onclick="loadSection('events')">🎭 Спектакли</button>
-        <button class="nav-btn" onclick="loadSection('tariffs')">💰 Тарифы</button>
-        <button class="nav-btn" onclick="loadSection('applications')">📩 Заявки</button>
-        <button class="nav-btn" onclick="loadSection('staff')">👥 Сотрудники</button>
-        <button class="nav-btn" onclick="loadSection('home')">🏠 Главная и Контакты</button>
-        <button class="nav-btn" onclick="loadSection('calendar')">📅 Календарь</button>
+        <button class="nav-btn active" onclick="loadSection('events')">Спектакли</button>
+        <button class="nav-btn" onclick="loadSection('tariffs')">Тарифы</button>
+        <button class="nav-btn" onclick="loadSection('applications')">Заявки</button>
+        <button class="nav-btn" onclick="loadSection('staff')">Сотрудники</button>
+        <button class="nav-btn" onclick="loadSection('home')">Главная и Контакты</button>
+        <button class="nav-btn" onclick="loadSection('calendar')">Календарь</button>
         <hr style="width: 100%; border: 0; border-top: 1px solid #eee; margin: 20px 0;">
         <a href="{% url 'home' %}" style="text-decoration: none; color: #666; font-size: 14px; padding: 10px;">← На сайт</a>
     </div>
@@ -94,6 +94,10 @@
     </div>
     <div id="staff-mini-calendar"></div>
 </div>
+<div id="roles-popover" class="roles-popover" style="display: none;">
+    <div class="roles-popover-content" id="roles-list-content"></div>
+    <div class="popover-arrow"></div>
+</div>
 
 <script>
     let currentSection = 'events';
@@ -136,10 +140,8 @@
                 { value: 'spectacle', label: 'Спектакль' }
             ]},
             { name: 'status', label: 'Статус', type: 'select', options: [
-                { value: 'pending', label: 'Ожидание' },
                 { value: 'processing', label: 'На рассмотрении' },
                 { value: 'approved', label: 'Одобрено' },
-                { value: 'rejected', label: 'Отклонено' }
             ]},
             { name: 'full_name', label: 'ФИО заказчика', type: 'text' },
             { name: 'phone', label: 'Телефон', type: 'text' },
@@ -156,7 +158,7 @@
         ],
         'staff': [
             { name: 'full_name', label: 'ФИО сотрудника', type: 'text' },
-            { name: 'role', label: 'Роль (актер, ведущий и т.д.)', type: 'text' }
+            { name: 'role', label: 'Роль', type: 'text' }
         ]
     };
 
@@ -335,47 +337,56 @@
     }
 
     function renderTable(data) {
-        const head = document.getElementById('table-head'), body = document.getElementById('table-body');
-        head.innerHTML = ''; body.innerHTML = '';
-        if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
+    const head = document.getElementById('table-head'), body = document.getElementById('table-body');
+    head.innerHTML = ''; body.innerHTML = '';
+    if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
 
-        const isApp = currentSection === 'applications';
+    const isApp = currentSection === 'applications';
+    
+    let keys = isApp ? ['full_name', 'phone', 'event_date'] : 
+            (currentSection === 'events' ? ['title', 'date', 'price'] : 
+            (currentSection === 'staff' ? ['full_name', 'role', 'calendar_btn'] : ['name', 'price', 'category']));
+
+    let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : 
+                (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : 
+                (currentSection === 'staff' ? ['ИМЯ', 'РОЛЬ', 'ГРАФИК'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']));
+
+    labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
+    head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
+
+    data.forEach(item => {
+        if (isApp && item.status === 'approved') return;
+        let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
         
-        let keys = isApp ? ['full_name', 'phone', 'event_date'] : 
-                (currentSection === 'events' ? ['title', 'date', 'price'] : 
-                (currentSection === 'staff' ? ['full_name', 'role', 'calendar_btn'] : ['name', 'price', 'category']));
-
-        let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : 
-                    (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : 
-                    (currentSection === 'staff' ? ['ИМЯ', 'РОЛЬ', 'ГРАФИК'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']));
-
-        labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
-        head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
-
-        data.forEach(item => {
-            if (isApp && item.status === 'approved') return;
-            let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
-            
-            keys.forEach(k => {
-                if (k === 'calendar_btn') {
-                    row += `<td><button class="staff-calendar-trigger" onclick="event.stopPropagation(); openStaffCalendar(event, ${item.id}, '${item.full_name}')">📅 Календарь</button></td>`;
-                } else if (k === 'role') {
-                    row += `<td><button class="staff-minor-btn" onclick="event.stopPropagation();">посмотреть</button></td>`;
-                } else {
-                    let v = item[k] || '-';
-                    if (k === 'date' || k === 'event_date') v = formatDate(v);
-                    row += `<td>${v}</td>`;
-                }
-            });
-
-            if (isApp) {
-                const trans = {'pending': 'Новая', 'processing': 'В работе', 'rejected': 'Отказ'};
-                row += `<td class="table-status-wrapper"><span class="status-badge status-${item.status}">${trans[item.status] || item.status}</span><button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button></td>`;
-            } else {
-                row += `<td><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button><button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button></td>`;
+        keys.forEach(k => {
+            if (k === 'calendar_btn') {
+                row += `<td><button class="staff-calendar-trigger" onclick="event.stopPropagation(); openStaffCalendar(event, ${item.id}, '${item.full_name}')">📅 Календарь</button></td>`;
+            } 
+            else if (k === 'role') {
+                const rolesData = JSON.stringify(item.roles || []).replace(/"/g, '&quot;');
+                row += `<td><button class="staff-minor-btn" onclick="event.stopPropagation(); openRolesPopover(event, ${rolesData})">посмотреть</button></td>`;
+            } 
+            else if (isApp && k === 'event_date') {
+                let datePart = item.event_date ? item.event_date.split('-').reverse().join('.') : '-';
+                let timePart = item.event_time ? item.event_time.substring(0, 5) : '00:00';
+                
+                row += `<td>${datePart} ${timePart}</td>`;
             }
-            row += `</tr>`;
-            body.innerHTML += row;
+            else {
+                let v = item[k] || '-';
+                if (!isApp && (k === 'date' || k === 'event_date')) v = formatDate(v);
+                row += `<td>${v}</td>`;
+            }
+        });
+
+        if (isApp) {
+            const trans = {'pending': 'Новая заявка!', 'processing': 'На рассмотрении'};
+            row += `<td class="table-status-wrapper"><span class="status-badge status-${item.status}">${trans[item.status] || item.status}</span><button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button></td>`;
+        } else {
+            row += `<td><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button><button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button></td>`;
+        }
+        row += `</tr>`;
+        body.innerHTML += row;
         });
     }
 
@@ -572,6 +583,35 @@
     }
 
     loadSection('events');
+    
+    function openRolesPopover(event, roles) {
+    const popover = document.getElementById('roles-popover');
+    const content = document.getElementById('roles-list-content');
+    
+    
+    content.innerHTML = roles.length > 0 
+        ? roles.map(r => `<div style="padding: 3px 0; border-bottom: 1px solid #f0f0f0;">• ${r}</div>`).join('') 
+        : '<em>Роли не указаны</em>';
+
+    popover.style.display = 'block';
+
+   
+    const rect = event.target.getBoundingClientRect();
+    
+    
+    popover.style.top = (rect.top + window.scrollY - (popover.offsetHeight / 2) + (rect.height / 2)) + 'px';
+    popover.style.left = (rect.right + window.scrollX + 12) + 'px';
+
+    
+    const close = (e) => {
+        if (!popover.contains(e.target) && e.target !== event.target) {
+            popover.style.display = 'none';
+            document.removeEventListener('click', close);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', close), 10);
+}
+    
 </script>
 </body>
 </html>

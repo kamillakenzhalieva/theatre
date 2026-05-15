@@ -14,13 +14,13 @@
             {% if event.image %}
                 <img src="{{ event.image.url }}" class="event-img">
             {% endif %}
-            <div class="price-tag">от {{ event.price }} ₽</div>
+            <div class="price-tag"> {{ event.price }} ₽</div>
         </div>
         
         <div class="event-content-side">
             <div class="event-meta">
-                <span>📅 {{ event.date|date:"d.m в H:i" }}</span>
-                <span>📍 {{ event.location }}</span>
+                <span> {{ event.date|date:"d.m в H:i" }}</span>
+                <span> {{ event.location }}</span>
             </div>
             <h2 class="event-title">{{ event.title }}</h2>
             <p class="event-text">{{ event.short_description|default:event.description|truncatewords:30 }}</p>
@@ -29,7 +29,7 @@
                 <button class="btn-more" onclick="openEventModal('{{ event.title|escapejs }}', '{{ event.description|escapejs }}', '{% if event.image %}{{ event.image.url }}{% endif %}', '{{ event.price }}', '{{ event.date|date:"d.m.Y в H:i" }}', '{{ event.location|escapejs }}')">
                     Узнать подробнее
                 </button>
-                <button class="btn-buy" onclick="openFinalForm('{{ event.title|escapejs }}')">Заказать</button>
+                <button class="btn-buy" onclick='openFinalForm("Спектакль", "{{ event.title|escapejs }}")'>Заказать</button>
             </div>
         </div>
     </div>
@@ -44,7 +44,6 @@
         <div style="flex: 1.2; padding: 40px; overflow-y: auto; position: relative;">
             <span onclick="closeEventModal()" style="position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer;">&times;</span>
             <h2 id="modalTitle" style="font-size: 28px; margin-top: 0;"></h2>
-            <div id="modalMeta" style="margin: 20px 0; color: #2ec4b6; font-weight: bold;"></div>
             <div id="modalDesc" style="line-height: 1.8; color: #444; margin-bottom: 30px;"></div>
             <button class="btn-buy" id="modalOrderBtn" style="width: 100%; padding: 15px;">ЗАКАЗАТЬ СПЕКТАКЛЬ</button>
         </div>
@@ -56,11 +55,9 @@ function openEventModal(title, desc, img, price, date, loc) {
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalDesc').innerHTML = desc.replace(/\n/g, '<br>');
     document.getElementById('modalImg').src = img;
-    document.getElementById('modalMeta').innerHTML = "📅 " + date + " | 📍 " + loc + "<br>💰 Цена: " + price + " ₽";
-    
     document.getElementById('modalOrderBtn').onclick = function() {
         closeEventModal();
-        openFinalForm(title);
+        openFinalForm('Спектакль', title);
     };
 
     document.getElementById('eventModal').style.display = 'flex';

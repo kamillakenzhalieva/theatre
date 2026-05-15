@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin 
 from .models import HomePage, Event, Service, Tariff, Application, Program, Staff, StaffGroup, Assignment
 
 @admin.register(Event)
@@ -21,9 +22,9 @@ class ProgramAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description')
     
 @admin.register(Staff)
-class StaffAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'role')
-    search_fields = ('full_name', 'role')
+class StaffAdmin(DynamicArrayMixin, admin.ModelAdmin):
+    list_display = ('full_name',)
+    search_fields = ('full_name',)
 
 @admin.register(StaffGroup)
 class StaffGroupAdmin(admin.ModelAdmin):
@@ -33,9 +34,13 @@ class StaffGroupAdmin(admin.ModelAdmin):
 
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
-    list_display = ('application', 'staff', 'group')
-    list_filter = ('staff', 'group')
-    search_fields = ('application__full_name', 'staff__full_name', 'group__name')
+    list_display = ('get_target', 'staff', 'group')
+    list_filter = ('staff', 'group', 'event')
+    fields = ('staff', 'group', 'application', 'event')
+
+    def get_target(self, obj):
+        return obj.application if obj.application else obj.event
+    get_target.short_description = "Событие (Заявка или Спектакль)"
 
 admin.site.register(HomePage)
 #admin.site.register(Service)

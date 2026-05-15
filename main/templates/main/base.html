@@ -141,9 +141,10 @@
             document.body.style.overflow = 'auto'; 
         }
 
-        async function openFinalForm(type) {
+        async function openFinalForm(type, selectedItem = null) {
             document.getElementById('serviceChoiceModal').style.display = 'none';
             document.getElementById('orderFormModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
             
             document.getElementById('categoryInput').value = type;
             document.getElementById('modalTitle').innerText = type.toUpperCase();
@@ -157,9 +158,7 @@
 
             try {
                 const response = await fetch(`/get-service-data/?category=${encodeURIComponent(type)}`, {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'Accept': 'application/json' }
                 });
                 const data = await response.json();
 
@@ -176,7 +175,13 @@
                 }
 
                 if (data.tariffs) {
-                    data.tariffs.forEach(item => tariffSelect.add(new Option(item, item)));
+                    data.tariffs.forEach(item => {
+                        const option = new Option(item, item);
+                        if (selectedItem && item.toLowerCase().includes(selectedItem.toLowerCase())) {
+                            option.selected = true;
+                        }
+                        tariffSelect.add(option);
+                    });
                 }
                 
                 if (showSelect && data.shows) {
@@ -208,7 +213,6 @@
                 event_date: rawData.event_date,
                 event_time: rawData.event_time,
                 tariff: rawData.tariff || null,
-                // Важно: имена ключей должны совпадать с моделями
                 chosen_show: rawData.show_program || null,
                 chosen_program: rawData.interactive || null
             };
@@ -228,8 +232,7 @@
                 this.reset();
             } else {
                 const err = await response.json();
-                console.log(err);
-                alert("Ошибка: " + JSON.stringify(err));
+                alert("Ошибка при отправке. Проверьте поля формы.");
             }
         };
 

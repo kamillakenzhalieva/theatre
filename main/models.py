@@ -2,6 +2,8 @@ import re
 from datetime import timedelta, datetime
 from django.db import models
 from django.core.exceptions import ValidationError
+from django_better_admin_arrayfield.models.fields import ArrayField as BetterArrayField
+from django.utils.timezone import make_aware, is_naive
 
 class HomePage(models.Model):
     welcome_text = models.CharField(max_length=255, verbose_name="Заголовок приветствия")
@@ -127,7 +129,12 @@ class Program(models.Model):
 
 class Staff(models.Model):
     full_name = models.CharField(max_length=255, verbose_name="ФИО сотрудника")
-    role = models.CharField(max_length=100, verbose_name="Роль (актер, ведущий и т.д.)")
+    roles = BetterArrayField(
+        models.CharField(max_length=100, blank=True),
+        verbose_name="Роли",
+        blank=True,
+        default=list
+    )
 
     def __str__(self):
         return self.full_name
@@ -144,38 +151,63 @@ class StaffGroup(models.Model):
         return self.name
 
 class Assignment(models.Model):
-    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey(StaffGroup, on_delete=models.CASCADE, null=True, blank=True)
-    application = models.ForeignKey(Application, on_delete=models.CASCADE)
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Сотрудник")
+    group = models.ForeignKey(StaffGroup, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Команда")
     
+    application = models.ForeignKey(Application, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Заявка (частная)")
+    
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Репертуарный спектакль")
+
     class Meta:
         verbose_name = "Назначение сотрудника"
         verbose_name_plural = "Назначения сотрудников"
 
-    def _get_event_intervals(self, app):
-        duration_minutes = 60
-        if app.category != 'spectacle' and app.tariff and app.tariff.duration:
-            d_str = str(app.tariff.duration).lower().strip()
-            nums = re.findall(r'\d+', d_str)
-            if nums:
-                val = int(nums[0])
-                if any(word in d_str for word in ['час', 'ч', 'hour', 'h']) or val < 10:
-                    duration_minutes = val * 60
-                else:
-                    duration_minutes = val
-        
-        start_dt = datetime.combine(app.event_date, app.event_time)
-        end_dt = start_dt + timedelta(minutes=duration_minutes + 60)
-        return start_dt, end_dt
+    def __str__(self):
+        target = self.application if self.application else self.event
+        person = self.staff if self.staff else self.group
+        return f"{person} -> {target}"
+
+    def _get_intervals(self, obj):
+        """Универсальный метод получения начала и конца события с учетом часовых поясов"""
+        if isinstance(obj, Application):
+            duration_minutes = 60
+            if obj.category != 'spectacle' and obj.tariff and obj.tariff.duration:
+                d_str = str(obj.tariff.duration).lower().strip()
+                nums = re.findall(r'\d+', d_str)
+                if nums:
+                    val = int(nums[0])
+                    duration_minutes = val * 60 if ('час' in d_str or 'ч' in d_str or val < 10) else val
+            
+            start_dt = datetime.combine(obj.event_date, obj.event_time)
+            
+            if is_naive(start_dt):
+                start_dt = make_aware(start_dt)
+                
+            end_dt = start_dt + timedelta(minutes=duration_minutes + 60)
+            return start_dt, end_dt
+            
+        elif isinstance(obj, Event):
+            start_dt = obj.date
+            
+            if is_naive(start_dt):
+                start_dt = make_aware(start_dt)
+                
+            end_dt = start_dt + timedelta(hours=2) 
+            return start_dt, end_dt
+            
+        return None, None
 
     def clean(self):
         super().clean()
-        if not self.application or not self.application.event_date or not self.application.event_time:
-            return
+        if not self.application and not self.event:
+            raise ValidationError("Выберите либо заявку, либо спектакль из афиши!")
+        if self.application and self.event:
+            raise ValidationError("Нельзя выбрать одновременно и заявку, и спектакль. Что-то одно.")
 
-        curr_start, curr_end = self._get_event_intervals(self.application)
+        current_event = self.application if self.application else self.event
+        curr_start, curr_end = self._get_intervals(current_event)
+
         target_staff_ids = []
-
         if self.staff:
             target_staff_ids.append(self.staff.id)
         if self.group:
@@ -189,15 +221,18 @@ class Assignment(models.Model):
             ).exclude(pk=self.pk).distinct()
 
             for other in conflicts:
-                if not other.application.event_date or not other.application.event_time:
-                    continue
-                other_start, other_end = self._get_event_intervals(other.application)
-                if curr_start < other_end and curr_end > other_start:
-                    s_obj = Staff.objects.get(id=s_id)
-                    raise ValidationError(
-                        f"Сотрудник {s_obj.full_name} уже занят на другом событии ({other.application.full_name}) до {other_end.strftime('%H:%M')}!"
-                    )
+                other_obj = other.application if other.application else other.event
+                if not other_obj: continue
+                
+                other_start, other_end = self._get_intervals(other_obj)
+                if other_start and other_end:
+                    if curr_start < other_end and curr_end > other_start:
+                        s_obj = Staff.objects.get(id=s_id)
+                        raise ValidationError(
+                            f"Сотрудник {s_obj.full_name} уже занят на другом событии ({other_obj}) до {other_end.strftime('%H:%M')}!"
+                        )
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+    

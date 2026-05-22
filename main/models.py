@@ -57,7 +57,7 @@ class Tariff(models.Model):
     image = models.ImageField(upload_to='tariffs/', blank=True, null=True, verbose_name="Картинка тарифа")
 
     def __str__(self):
-        return f"{self.get_category_display()} — {self.name} ({self.price} ₽)"
+        return f"{self.get_category_display()} — {self.name} ({int(self.price)} ₽)"
 
     class Meta:
         managed = True
@@ -153,9 +153,7 @@ class StaffGroup(models.Model):
 class Assignment(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Сотрудник")
     group = models.ForeignKey(StaffGroup, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Команда")
-    
-    application = models.ForeignKey(Application, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Заявка (частная)")
-    
+    application = models.ForeignKey(Application, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Заявка")
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Репертуарный спектакль")
 
     class Meta:
@@ -168,71 +166,66 @@ class Assignment(models.Model):
         return f"{person} -> {target}"
 
     def _get_intervals(self, obj):
-        """Универсальный метод получения начала и конца события с учетом часовых поясов"""
         if isinstance(obj, Application):
+            if not obj.event_date or not obj.event_time:
+                return None, None
             duration_minutes = 60
             if obj.category != 'spectacle' and obj.tariff and obj.tariff.duration:
-                d_str = str(obj.tariff.duration).lower().strip()
+                d_str = str(obj.tariff.duration).lower()
                 nums = re.findall(r'\d+', d_str)
                 if nums:
                     val = int(nums[0])
                     duration_minutes = val * 60 if ('час' in d_str or 'ч' in d_str or val < 10) else val
             
             start_dt = datetime.combine(obj.event_date, obj.event_time)
-            
-            if is_naive(start_dt):
-                start_dt = make_aware(start_dt)
-                
+            if is_naive(start_dt): start_dt = make_aware(start_dt)
             end_dt = start_dt + timedelta(minutes=duration_minutes + 60)
             return start_dt, end_dt
-            
+
         elif isinstance(obj, Event):
+            if not obj.date: return None, None
             start_dt = obj.date
-            
-            if is_naive(start_dt):
-                start_dt = make_aware(start_dt)
-                
-            end_dt = start_dt + timedelta(hours=2) 
+            if is_naive(start_dt): start_dt = make_aware(start_dt)
+            end_dt = start_dt + timedelta(hours=2)
             return start_dt, end_dt
-            
         return None, None
 
     def clean(self):
         super().clean()
-        if not self.application and not self.event:
-            raise ValidationError("Выберите либо заявку, либо спектакль из афиши!")
-        if self.application and self.event:
-            raise ValidationError("Нельзя выбрать одновременно и заявку, и спектакль. Что-то одно.")
+        current_obj = self.application if self.application else self.event
+        if not current_obj:
+            raise ValidationError("Не выбрано мероприятие!")
 
-        current_event = self.application if self.application else self.event
-        curr_start, curr_end = self._get_intervals(current_event)
+        curr_start, curr_end = self._get_intervals(current_obj)
+        if not curr_start:
+            return 
 
-        target_staff_ids = []
+        
+        check_ids = []
         if self.staff:
-            target_staff_ids.append(self.staff.id)
+            check_ids.append(self.staff.id)
         if self.group:
-            target_staff_ids.extend(self.group.members.values_list('id', flat=True))
-
-        target_staff_ids = list(set(target_staff_ids))
-
-        for s_id in target_staff_ids:
-            conflicts = Assignment.objects.filter(
+            check_ids.extend(self.group.members.values_list('id', flat=True))
+        
+        check_ids = list(set(check_ids)) 
+        for s_id in check_ids:
+            others = Assignment.objects.filter(
                 models.Q(staff_id=s_id) | models.Q(group__members__id=s_id)
             ).exclude(pk=self.pk).distinct()
 
-            for other in conflicts:
+            for other in others:
                 other_obj = other.application if other.application else other.event
                 if not other_obj: continue
                 
-                other_start, other_end = self._get_intervals(other_obj)
-                if other_start and other_end:
-                    if curr_start < other_end and curr_end > other_start:
-                        s_obj = Staff.objects.get(id=s_id)
+                o_start, o_end = self._get_intervals(other_obj)
+                if o_start and o_end:
+                    if curr_start < o_end and curr_end > o_start:
+                        person = Staff.objects.get(id=s_id)
                         raise ValidationError(
-                            f"Сотрудник {s_obj.full_name} уже занят на другом событии ({other_obj}) до {other_end.strftime('%H:%M')}!"
+                            f"Конфликт! {person.full_name} уже занят(а) на '{other_obj}' "
+                            f"({o_start.strftime('%H:%M')}-{o_end.strftime('%H:%M')})"
                         )
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-    

@@ -10,7 +10,7 @@
 
     <div class="tariffs-grid">
         {% for t in tariffs %}
-        <div class="tariff-card" style="border-top: 8px solid #8cedc7;">
+        <div class="tariff-card" style="border-top: 8px solid #8cedc7; position: relative;">
             <div class="tariff-header" style="text-align: center; margin-bottom: 15px;">
                 <h2 style="margin: 0; font-size: 28px; text-transform: uppercase;">«{{ t.name }}»</h2>
             </div>
@@ -24,7 +24,7 @@
                 <div class="tariff-duration" style="color: #2ec4b6; font-weight: 700; margin-bottom: 10px;">
                      {{ t.duration }}
                 </div>
-                <div class="tariff-price">от {{ t.price }} ₽</div>
+                <div class="event-price">от {{ t.price|floatformat:0 }} ₽</div>
             </div>
 
             <ul class="tariff-features">

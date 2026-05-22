@@ -10,6 +10,47 @@
 </head>
 <body>
 
+
+<div id="staff-calendar-popover" class="staff-popover-calendar" style="display: none;">
+    <div class="staff-popover-header">
+        <span id="staff-cal-name">Сотрудник</span>
+        <button onclick="closeStaffCalendar()" style="border:none; background:none; cursor:pointer;">×</button>
+    </div>
+    <div id="staff-mini-calendar"></div>
+</div>
+
+
+<div id="roles-popover" class="roles-popover" style="display: none;">
+    <div class="roles-popover-content" id="roles-list-content"></div>
+    <div class="popover-arrow"></div>
+</div>
+
+<
+<div id="success-toast" class="success-toast" style="display:none;">
+    <div class="success-toast-icon">✓</div>
+    <span id="toast-text">Действие выполнено!</span>
+</div>
+
+
+<div id="custom-confirm-modal" class="modal-overlay" style="display:none; z-index: 11000;">
+    <div class="modal-card" style="max-width: 400px; text-align: center; border: 2px solid var(--mint);">
+        <div class="modal-body" style="padding: 40px 20px;">
+            <h3>Одобрить заявку?</h3>
+            <p style="color: #666; margin-bottom: 30px;">Статус изменится на «Одобрено», команда будет назначена.</p>
+            <div style="display: flex; gap: 15px;">
+                <button type="button" class="btn" onclick="closeApproveConfirm()" style="background: #eee; flex: 1;">Отмена</button>
+                <button type="button" class="btn btn-add" onclick="executeApprove()" style="flex: 1;">Да, одобрить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="roles-popover" class="roles-popover" style="display: none;">
+    <div class="roles-popover-content" id="roles-list-content"></div>
+    <div class="popover-arrow"></div>
+</div>
+
 <div class="admin-container">
     <div class="sidebar">
         <h2>Админ-панель</h2>
@@ -497,17 +538,63 @@
 
     async function deleteItem(id) { if (confirm('Удалить?')) { await fetch(`/api/${currentSection}/${id}/`, { method: 'DELETE', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }); loadSection(currentSection); } }
 
-    async function approveApplication() {
+    
+    function approveApplication() {
         const id = document.getElementById('field-id').value;
-        if (!id || !confirm('Одобрить?')) return;
-        const fd = new FormData(); fd.append('status', 'approved');
-        const r = await fetch(`/api/applications/${id}/`, { method: 'PATCH', headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
-        if (r.ok && selectedTarget) {
-            const data = { application: id, [selectedTarget.type]: selectedTarget.id };
-            const ar = await fetch('/api/assignments/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, body: JSON.stringify(data) });
-            if (!ar.ok) { const e = await ar.json(); alert(e.non_field_errors?.[0] || 'Конфликт времени'); }
+        if (!id) return;
+        document.getElementById('custom-confirm-modal').style.display = 'flex';
+    }
+
+    
+    function closeApproveConfirm() {
+        document.getElementById('custom-confirm-modal').style.display = 'none';
+    }
+
+   
+    function showToast(text) {
+        const toast = document.getElementById('success-toast');
+        const textEl = document.getElementById('toast-text');
+        if (toast && textEl) {
+            textEl.innerText = text;
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
-        closeModal(); loadSection('applications');
+    }
+
+    
+    async function executeApprove() {
+        const id = document.getElementById('field-id').value;
+        
+        
+        if (selectedTarget) {
+            const aData = { application: id, [selectedTarget.type]: selectedTarget.id };
+            const ar = await fetch('/api/assignments/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, 
+                body: JSON.stringify(aData) 
+            });
+            
+            if (!ar.ok) { 
+                const errData = await ar.json(); 
+                alert(errData.detail || 'Конфликт: команда уже занята!'); 
+                closeApproveConfirm(); 
+                return; 
+            }
+        }
+
+        
+        const fd = new FormData(); 
+        fd.append('status', 'approved');
+        await fetch(`/api/applications/${id}/`, { 
+            method: 'PATCH', 
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }, 
+            body: fd 
+        });
+
+        closeApproveConfirm(); 
+        closeModal(); 
+        loadSection('applications');
+        showToast("🚀 Заявка одобрена и команда назначена!");
     }
 
     document.addEventListener('click', (e) => { 

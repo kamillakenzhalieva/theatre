@@ -7,11 +7,12 @@ from .serializers import (
     TariffSerializer, ApplicationSerializer, AssignmentSerializer, StaffSerializer, StaffGroupSerializer
 )
 from rest_framework.decorators import action
-import datetime
 from django.db.models import Q  
 import re
 from django.http import JsonResponse
-from datetime import timedelta
+from datetime import datetime, timedelta 
+from django.core.exceptions import ValidationError 
+
 
 def index(request):
     home_data = HomePage.objects.first() 
@@ -72,6 +73,7 @@ def graduation_view(request):
 def admin_panel(request):
     return render(request, 'main/admin_panel.html')
 
+
 class HomePageViewSet(viewsets.ModelViewSet):
     queryset = HomePage.objects.all()
     serializer_class = HomePageSerializer
@@ -119,39 +121,37 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
+
 def calendar_events_api(request):
     data = []
     for ev in Event.objects.filter(is_active=True):
+        assign = Assignment.objects.filter(event=ev).first()
+        who = f" — [{assign.group.name if assign.group else assign.staff.full_name}]" if assign else ""
+        
         data.append({
-            'id': ev.id,
-            'title': f"🎭 {ev.title}",
+            'id': f"ev_{ev.id}",
+            'title': f"🎭 {ev.title}{who}",
             'start': ev.date.isoformat(),
             'backgroundColor': '#a2d2ff', 
-            'borderColor': '#7fb3e6',
-            'extendedProps': {
-                'type': 'event',
-                'description': ev.short_description,
-                'location': ev.location
-            }
+            'borderColor': '#7fb3e6'
         })
 
     apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
     for ap in apps:
-        start_dt = datetime.datetime.combine(ap.event_date, ap.event_time)
+        assign = Assignment.objects.filter(application=ap).first()
+        who = f" — [{assign.group.name if assign.group else assign.staff.full_name}]" if assign else ""
+        
+        start_dt = datetime.combine(ap.event_date, ap.event_time)
         is_bday = ap.category == 'birthday'
         color = '#ff8b94' if is_bday else '#a8e6cf'
         icon = '🎂' if is_bday else '🎓'
         data.append({
-            'id': ap.id,
-            'title': f"{icon} {ap.full_name}",
+            'id': f"ap_{ap.id}",
+            'title': f"{icon} {ap.full_name}{who}",
             'start': start_dt.isoformat(),
             'backgroundColor': color,
-            'borderColor': color,
-            'extendedProps': {
-                'type': 'application',
-                'phone': ap.phone,
-                'tariff': ap.tariff.name if ap.tariff else 'Не указан'
-            }
+            'borderColor': color
         })
     return JsonResponse(data, safe=False)
 
@@ -182,6 +182,7 @@ def get_service_data(request):
         })
     return JsonResponse({'error': 'Invalid category'}, status=400)
 
+
 class StaffViewSet(viewsets.ModelViewSet):
     queryset = Staff.objects.all()
     serializer_class = StaffSerializer
@@ -189,28 +190,34 @@ class StaffViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def busy_dates(self, request, pk=None):
         staff = self.get_object()
-        
         assignments = Assignment.objects.filter(
             Q(staff=staff) | Q(group__members=staff)
-        ).select_related('application', 'application__tariff').distinct()
+        ).distinct()
 
         events = []
         for a in assignments:
-            app = a.application
-            if app.event_date and app.event_time:
-                start_dt, end_dt = a._get_event_intervals(app)
-                
+            try:
+                if a.application:
+                    if not a.application.event_date or not a.application.event_time: continue
+                    start_dt = datetime.combine(a.application.event_date, a.application.event_time)
+                    title = f"Заказ: {a.application.full_name}"
+                    color = '#2ec4b6'
+                elif a.event:
+                    if not a.event.date: continue
+                    start_dt = a.event.date
+                    title = f"Спектакль: {a.event.title}"
+                    color = '#ff9f43'
+                else: continue
+
                 events.append({
-                    'title': f"{app.category}",
+                    'title': title,
                     'start': start_dt.isoformat(),
-                    'end': end_dt.isoformat(),
+                    'end': (start_dt + timedelta(hours=2)).isoformat(),
                     'allDay': False,
-                    'backgroundColor': '#ffe5e5',
-                    'textColor': '#d32f2f',
-                    'borderColor': '#ffcccc'
+                    'backgroundColor': color,
+                    'borderColor': color,
                 })
-        
-        print(f"Отправлено событий для {str(staff)}: {len(events)}")
+            except Exception: continue
         return Response(events)
 
 class AssignmentViewSet(viewsets.ModelViewSet):
@@ -218,14 +225,32 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        if request.data.get('dry_run'):
-            return Response({"status": "available"}, status=status.HTTP_200_OK)
+        try:
+            data = request.data.copy()
+            cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
+            raw_cat = data.get('category')
+            if raw_cat in cat_map:
+                data['category'] = cat_map[raw_cat]
+
+            if data.get('category') == 'spectacle':
+                spec_name = data.get('tariff')
+                if spec_name:
+                    old_msg = data.get('message', '')
+                    data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
+                data['tariff'] = None
+
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
             
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            if request.data.get('dry_run'):
+                return Response({"status": "available"}, status=status.HTTP_200_OK)
+                
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except ValidationError as e:
+            msg = e.messages[0] if hasattr(e, 'messages') else str(e)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
 class StaffGroupViewSet(viewsets.ModelViewSet):
     queryset = StaffGroup.objects.all()

@@ -14,11 +14,11 @@
         <div class="event-card">
             {% if event.image %}
             <div class="event-image" style="background-image: url('{{ event.image.url }}');">
-                <div class="event-price">от {{ event.price }} ₽</div>
+                <div class="event-price">от {{ event.price|floatformat:0 }} ₽</div> 
             </div>
             {% else %}
             <div class="event-image" style="background-color: #eee;">
-                <div class="event-price">от {{ event.price }} ₽</div>
+                <div class="event-price">от {{ event.price|floatformat:0 }} ₽</div>
             </div>
             {% endif %}
 

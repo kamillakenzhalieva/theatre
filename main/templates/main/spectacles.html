@@ -14,7 +14,7 @@
             {% if event.image %}
                 <img src="{{ event.image.url }}" class="event-img">
             {% endif %}
-            <div class="price-tag"> {{ event.price }} ₽</div>
+            <div class="event-price">от {{ event.price|floatformat:0 }} ₽</div>
         </div>
         
         <div class="event-content-side">

@@ -130,11 +130,14 @@ def calendar_events_api(request):
         who = f" — [{assign.group.name if assign.group else assign.staff.full_name}]" if assign else ""
         
         data.append({
-            'id': f"ev_{ev.id}",
+            'id': f"ev{ev.id}",
             'title': f"🎭 {ev.title}{who}",
             'start': ev.date.isoformat(),
             'backgroundColor': '#a2d2ff', 
-            'borderColor': '#7fb3e6'
+            'borderColor': '#7fb3e6',
+            'extendedProps': {
+                'type': 'event'
+            }
         })
 
     apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
@@ -147,11 +150,14 @@ def calendar_events_api(request):
         color = '#ff8b94' if is_bday else '#a8e6cf'
         icon = '🎂' if is_bday else '🎓'
         data.append({
-            'id': f"ap_{ap.id}",
+            'id': f"ap{ap.id}",
             'title': f"{icon} {ap.full_name}{who}",
             'start': start_dt.isoformat(),
             'backgroundColor': color,
-            'borderColor': color
+            'borderColor': color,
+            'extendedProps': {
+                'type': 'application'  
+            }
         })
     return JsonResponse(data, safe=False)
 

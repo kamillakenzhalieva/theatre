@@ -37,6 +37,7 @@
             initialView: 'dayGridMonth',
             locale: 'ru',
             firstDay: 1,
+            aspectRatio: 2, 
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -50,7 +51,8 @@
             },
             eventClick: function(info) {
                 closePopover();
-                openEventDetail(info.event.id, info.event.extendedProps.type || info.event.extendedProps.type);
+                const eventType = info.event.extendedProps ? info.event.extendedProps.type : 'application';
+                openEventDetail(info.event.id, eventType);
             }
         });
         calendar.render();
@@ -74,7 +76,7 @@
 
                 content.innerHTML = filtered.map(event => {
                     const time = event.start.includes('T') ? event.start.split('T')[1].substring(0, 5) : '--:--';
-                    const type = event.extendedProps ? (event.extendedProps.type || event.type) : event.type;
+                    const type = event.extendedProps ? event.extendedProps.type : 'application';
 
                     return `
                         <div class="popover-item" onclick="openEventDetail('${event.id}', '${type}')">
@@ -99,12 +101,16 @@
         detailWindow.style.display = 'block';
         detailContent.innerHTML = '<div style="font-size:14px; color: #999; padding: 20px;">Загрузка...</div>';
 
-        const apiPath = (type === 'event') ? `/api/events/${id}/` : `/api/applications/${id}/`;
+        const cleanId = id.replace(/\D/g, ''); 
+        const isEvent = (type === 'event');
+        const apiPath = isEvent ? `/api/events/${cleanId}/` : `/api/applications/${cleanId}/`;
 
         fetch(apiPath)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                const isEvent = (type === 'event');
                 const categories = { 'birthday': 'День рождения', 'graduation': 'Выпускной', 'spectacle': 'Спектакль' };
 
                 let rawDate = data.event_date || data.date || data.start || '';
@@ -121,7 +127,7 @@
                     <div class="detail-grid">
                         <div class="section-divider">ОСНОВНОЕ</div>
                         <div class="detail-field full-width">
-                            <span class="field-label">${isEvent ? 'Название' : 'ФИО Клиента'}</span>
+                            <span class="field-label">${isEvent ? 'Название спектакля' : 'ФИО Клиента'}</span>
                             <div class="field-value" style="font-size: 16px; color: #5a9473;">${isEvent ? data.title : data.full_name}</div>
                         </div>
                         <div class="detail-field">
@@ -137,7 +143,7 @@
                         <div class="section-divider">КОНТАКТЫ</div>
                         <div class="detail-field">
                             <span class="field-label">Телефон</span>
-                            <div class="field-value">${data.phone}</div>
+                            <div class="field-value">${data.phone || '—'}</div>
                         </div>
                         <div class="detail-field">
                             <span class="field-label">Email</span>
@@ -151,12 +157,12 @@
                             <div class="field-value">${categories[data.category] || (isEvent ? 'Спектакль' : '—')}</div>
                         </div>
                         <div class="detail-field">
-                            <span class="field-label">${isEvent ? 'Цена' : 'Гости'}</span>
-                            <div class="field-value">${isEvent ? (data.price + ' ₽') : (data.guests_count + ' чел.')}</div>
+                            <span class="field-label">${isEvent ? 'Цена билета' : 'Гости'}</span>
+                            <div class="field-value">${isEvent ? (data.price ? data.price + ' ₽' : '—') : (data.guests_count ? data.guests_count + ' чел.' : '—')}</div>
                         </div>
                         <div class="detail-field full-width">
                             <span class="field-label">Адрес / Локация</span>
-                            <div class="field-value">${data.location || data.address || 'Не указан'}</div>
+                            <div class="field-value">${data.address || data.location || 'Не указан'}</div>
                         </div>
                         
                         ${isEvent ? `
@@ -168,22 +174,24 @@
                         <div class="detail-field full-width">
                             <span class="field-label">Программы</span>
                             <div class="field-value">
-                                ${data.show_name ? `• ${data.show_name}<br>` : ''}
-                                ${data.program_name ? `• ${data.program_name}` : ''}
+                                ${data.tariff_name ? `• Тариф: ${data.tariff_name}<br>` : ''}
+                                ${data.show_name ? `• Шоу: ${data.show_name}<br>` : ''}
+                                ${data.program_name ? `• Программа: ${data.program_name}` : ''}
+                                ${!data.tariff_name && !data.show_name && !data.program_name ? '—' : ''}
                             </div>
                         </div>
                         `}
 
                         <div class="detail-field full-width" style="background: #f9f9f9; border: none;">
                             <span class="field-label">Описание / Комментарий</span>
-                            <div class="field-value">${data.description || data.message || '...'}</div>
+                            <div class="field-value">${data.message || data.description || '...'}</div>
                         </div>
                     </div>
                 `;
             })
             .catch(err => {
                 console.error(err);
-                detailContent.innerHTML = '<div style="color:red; padding:20px;">Ошибка при получении данных</div>';
+                detailContent.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки данных: ${err.message}</div>`;
             });
     }
 

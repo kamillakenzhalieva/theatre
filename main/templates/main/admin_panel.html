@@ -10,7 +10,6 @@
 </head>
 <body>
 
-
 <div id="staff-calendar-popover" class="staff-popover-calendar" style="display: none;">
     <div class="staff-popover-header">
         <span id="staff-cal-name">Сотрудник</span>
@@ -19,18 +18,15 @@
     <div id="staff-mini-calendar"></div>
 </div>
 
-
 <div id="roles-popover" class="roles-popover" style="display: none;">
     <div class="roles-popover-content" id="roles-list-content"></div>
     <div class="popover-arrow"></div>
 </div>
 
-<
 <div id="success-toast" class="success-toast" style="display:none;">
     <div class="success-toast-icon">✓</div>
     <span id="toast-text">Действие выполнено!</span>
 </div>
-
 
 <div id="custom-confirm-modal" class="modal-overlay" style="display:none; z-index: 11000;">
     <div class="modal-card" style="max-width: 400px; text-align: center; border: 2px solid var(--mint);">
@@ -44,7 +40,6 @@
         </div>
     </div>
 </div>
-
 
 <div id="roles-popover" class="roles-popover" style="display: none;">
     <div class="roles-popover-content" id="roles-list-content"></div>
@@ -199,7 +194,7 @@
         ],
         'staff': [
             { name: 'full_name', label: 'ФИО сотрудника', type: 'text' },
-            { name: 'role', label: 'Роль', type: 'text' }
+            { name: 'roles', label: 'Роль', type: 'text' }
         ]
     };
 
@@ -237,25 +232,81 @@
     async function refreshGroupsList() {
         const appId = document.getElementById('field-id').value;
         const area = document.getElementById('groups-list-area');
-        area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Проверка...</div>';
+        area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Проверка доступности команд...</div>';
         
         const { staff, groups } = await getStaffAndGroups();
-        const { avG } = await filterAvailable(staff, groups, appId);
         
-        area.innerHTML = avG.length ? '' : '<div style="padding:10px; font-size:12px; color:#ff6b6b;">Нет свободных команд</div>';
-        avG.forEach(g => {
+        const checkedGroups = [];
+        
+        for (const g of groups) {
+            const r = await fetch('/api/assignments/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ application: appId, group: g.id, dry_run: true })
+            });
+            
+            if (r.status === 200) {
+                checkedGroups.push({ group: g, available: true, errorMsg: '' });
+            } else {
+                const errData = await r.json();
+                const msg = errData.detail || 'Конфликт времени';
+                checkedGroups.push({ group: g, available: false, errorMsg: msg });
+            }
+        }
+        
+        area.innerHTML = '';
+        if (checkedGroups.length === 0) {
+            area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Команды не созданы</div>';
+            return;
+        }
+
+        checkedGroups.forEach(({ group, available, errorMsg }) => {
             const d = document.createElement('div');
             d.className = 'option-item';
             d.style.display = 'flex';
-            d.style.justifyContent = 'space-between';
-            d.innerHTML = `<span>${g.name}</span> <small style="color: #999; font-size: 10px; cursor:pointer;">ред.</small>`;
-            d.ondblclick = (e) => { e.stopPropagation(); renameGroup(g.id, g.name); };
+            d.style.flexDirection = 'column'; 
+            d.style.padding = '8px 10px';
+            d.style.borderBottom = '1px solid #f0f0f0';
+            
+            if (!available) {
+                d.style.backgroundColor = '#fff5f5';
+                d.style.opacity = '0.7';
+                d.title = errorMsg; 
+            }
+
+            let topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.justifyContent = 'space-between';
+            topRow.style.width = '100%';
+            topRow.innerHTML = `<span>${group.name}</span> <small style="color: #999; font-size: 10px; cursor:pointer;">ред.</small>`;
+            
+            topRow.querySelector('small').onclick = (e) => { e.stopPropagation(); openGroupEditor(e, group); };
+            d.appendChild(topRow);
+
+            if (!available) {
+                let errorDiv = document.createElement('div');
+                errorDiv.style.color = '#ff6b6b';
+                errorDiv.style.fontSize = '10px';
+                errorDiv.style.marginTop = '3px';
+                errorDiv.innerText = errorMsg;
+                d.appendChild(errorDiv);
+            }
+
             d.onclick = () => {
-                selectedTarget = { type: 'group', id: g.id };
-                document.querySelector('.custom-select-trigger').innerText = g.name;
+                if (!available) {
+                    alert(`Нельзя выбрать эту команду!\n\n${errorMsg}`);
+                    return; 
+                }
+                selectedTarget = { type: 'group', id: group.id };
+                document.querySelector('.custom-select-trigger').innerText = group.name;
                 toggleAssignMenu();
             };
-            d.querySelector('small').onclick = (e) => { e.stopPropagation(); openGroupEditor(e, g); };
+
+            d.ondblclick = (e) => { 
+                e.stopPropagation(); 
+                renameGroup(group.id, group.name); 
+            };
+            
             area.appendChild(d);
         });
     }
@@ -459,12 +510,43 @@
                 html = `<textarea name="${field.name}" class="form-field-textarea" rows="3">${val || ''}</textarea>`;
             } else if (field.type === 'checkbox') {
                 html = `<input type="checkbox" name="${field.name}" class="form-field-checkbox" ${val === true || val === 'true' ? 'checked' : ''}>`;
-            } else {
+            } 
+            else if (currentSection === 'staff' && field.name === 'roles') { 
+                let rolesArr = Array.isArray(val) ? val : (val ? val.split(',').map(r => r.trim()) : ['']);
+                if (rolesArr.length === 0) rolesArr = [''];
+
+                let rolesHtml = `<div id="roles-inputs-container">`;
+                rolesArr.forEach(r => {
+                    rolesHtml += `
+                        <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                            <input type="text" name="staff_roles_array" class="form-field-input" value="${r}" placeholder="Роль...">
+                            <button type="button" class="btn" style="background:#ff6b6b; padding: 5px 10px;" onclick="this.parentElement.remove()">×</button>
+                        </div>`;
+                });
+                rolesHtml += `</div>`;
+                rolesHtml += `<button type="button" class="btn" style="margin-top:5px; background:#eee; font-size:12px;" onclick="addRoleInputField()">+ Добавить роль</button>`;
+                
+                container.insertAdjacentHTML('beforeend', `<div class="form-group"><label class="form-field-label">${field.label}</label>${rolesHtml}</div>`);
+            
+                return;
+            }
+            else {
                 const ro = ['tariff', 'chosen_show', 'chosen_program'].includes(field.name) ? 'readonly style="background: #f9f9f9;"' : '';
                 html = `<input type="${field.type}" name="${field.name}" class="form-field-input" value="${val || ''}" ${ro}>`;
             }
             container.insertAdjacentHTML('beforeend', `<div class="form-group"><label class="form-field-label">${field.label}</label>${html}</div>`);
         });
+    }
+
+    function addRoleInputField() {
+        const container = document.getElementById('roles-inputs-container');
+        const div = document.createElement('div');
+        div.style = "display: flex; gap: 5px; margin-bottom: 5px;";
+        div.innerHTML = `
+            <input type="text" name="staff_roles_array" class="form-field-input" value="" placeholder="Роль...">
+            <button type="button" class="btn" style="background:#ff6b6b; padding: 5px 10px;" onclick="this.parentElement.remove()">×</button>
+        `;
+        container.appendChild(div);
     }
 
     function openCreateModal() {
@@ -518,9 +600,26 @@
 
     document.getElementById('admin-form').onsubmit = async (e) => {
         e.preventDefault();
-        const fd = new FormData(e.target), id = document.getElementById('field-id').value;
+        const fd = new FormData(e.target);
+        const id = document.getElementById('field-id').value;
+        
+        if (currentSection === 'staff') {
+            fd.delete('role');
+            fd.delete('roles'); 
+            
+            const roleInputs = document.querySelectorAll('input[name="staff_roles_array"]');
+            
+            roleInputs.forEach(input => {
+                const val = input.value.trim();
+                if (val) {
+                    fd.append('roles', val); 
+                }
+            });
+        }
+
         const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
         const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': '{{ csrf_token }}' }, body: fd });
+        
         if (r.ok) {
             const savedItem = await r.json();
             if (selectedTarget && (currentSection === 'applications' || currentSection === 'events')) {
@@ -530,10 +629,19 @@
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, 
                     body: JSON.stringify(aData) 
                 });
-                if(!ar.ok) { const e = await ar.json(); alert(e.non_field_errors?.[0] || 'Конфликт времени'); }
+                
+                if (!ar.ok) { 
+                    const e = await ar.json();
+                    alert(e.detail || 'Ошибка назначения: конфликт времени сотрудников.');
+                    loadSection(currentSection);
+                    return;
+                }
             }
-            closeModal(); loadSection(currentSection); 
-        } else alert('Ошибка');
+            closeModal(); 
+            loadSection(currentSection); 
+        } else {
+            alert('Ошибка при сохранении данных в базу');
+        }
     };
 
     async function deleteItem(id) { if (confirm('Удалить?')) { await fetch(`/api/${currentSection}/${id}/`, { method: 'DELETE', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }); loadSection(currentSection); } }
@@ -564,37 +672,39 @@
     
     async function executeApprove() {
         const id = document.getElementById('field-id').value;
-        
-        
-        if (selectedTarget) {
-            const aData = { application: id, [selectedTarget.type]: selectedTarget.id };
-            const ar = await fetch('/api/assignments/', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, 
-                body: JSON.stringify(aData) 
-            });
-            
-            if (!ar.ok) { 
-                const errData = await ar.json(); 
-                alert(errData.detail || 'Конфликт: команда уже занята!'); 
-                closeApproveConfirm(); 
-                return; 
-            }
-        }
+        if (!id) return;
 
-        
-        const fd = new FormData(); 
-        fd.append('status', 'approved');
-        await fetch(`/api/applications/${id}/`, { 
-            method: 'PATCH', 
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' }, 
-            body: fd 
+        const response = await fetch(`/api/applications/${id}/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ status: 'approved' })
         });
 
-        closeApproveConfirm(); 
-        closeModal(); 
-        loadSection('applications');
-        showToast("🚀 Заявка одобрена и команда назначена!");
+        if (response.ok) {
+            if (selectedTarget) {
+                const aData = { application: id, [selectedTarget.type]: selectedTarget.id };
+                const ar = await fetch('/api/assignments/', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }, 
+                    body: JSON.stringify(aData)
+                });
+
+                if (!ar.ok) {
+                    const e = await ar.json();
+                    closeApproveConfirm();
+                    alert(`Заявка обновлена, но команда не назначена!\n\n${e.detail || 'Конфликт времени.'}`);
+                    loadSection(currentSection);
+                    return;
+                }
+            }
+            
+            closeApproveConfirm();
+            closeModal();
+            showToast('Заявка успешно одобрена!');
+            loadSection(currentSection);
+        } else {
+            alert('Не удалось одобрить заявку');
+        }
     }
 
     document.addEventListener('click', (e) => { 

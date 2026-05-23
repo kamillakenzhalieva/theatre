@@ -121,13 +121,20 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-
 def calendar_events_api(request):
     data = []
     for ev in Event.objects.filter(is_active=True):
         assign = Assignment.objects.filter(event=ev).first()
-        who = f" — [{assign.group.name if assign.group else assign.staff.full_name}]" if assign else ""
+        
+        if assign:
+            if assign.group:
+                who = f" — [{assign.group.name}]"
+            elif assign.staff:
+                who = f" — [{assign.staff.full_name}]"
+            else:
+                who = " — [Не назначен]"
+        else:
+            who = ""
         
         data.append({
             'id': f"ev{ev.id}",
@@ -143,7 +150,16 @@ def calendar_events_api(request):
     apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
     for ap in apps:
         assign = Assignment.objects.filter(application=ap).first()
-        who = f" — [{assign.group.name if assign.group else assign.staff.full_name}]" if assign else ""
+        
+        if assign:
+            if assign.group:
+                who = f" — [{assign.group.name}]"
+            elif assign.staff:
+                who = f" — [{assign.staff.full_name}]"
+            else:
+                who = " — [Не назначен]"
+        else:
+            who = ""
         
         start_dt = datetime.combine(ap.event_date, ap.event_time)
         is_bday = ap.category == 'birthday'

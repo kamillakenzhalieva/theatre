@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from .models import HomePage, Event, Service, Tariff, Application, Program, Assignment, Staff, StaffGroup
 from .serializers import (
     HomePageSerializer, EventSerializer, ServiceSerializer, 
-    TariffSerializer, ApplicationSerializer, AssignmentSerializer, StaffSerializer, StaffGroupSerializer
+    TariffSerializer, ApplicationSerializer, AssignmentSerializer, StaffSerializer, StaffGroupSerializer, ProgramSerializer
 )
 from rest_framework.decorators import action
 from django.db.models import Q  
@@ -277,3 +277,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 class StaffGroupViewSet(viewsets.ModelViewSet):
     queryset = StaffGroup.objects.all()
     serializer_class = StaffGroupSerializer
+    
+class ProgramViewSet(viewsets.ModelViewSet):
+    queryset = Program.objects.all()
+    serializer_class = ProgramSerializer

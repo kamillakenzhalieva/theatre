@@ -51,6 +51,7 @@
         <h2>Админ-панель</h2>
         <button class="nav-btn active" onclick="loadSection('events')">Спектакли</button>
         <button class="nav-btn" onclick="loadSection('tariffs')">Тарифы</button>
+        <button class="nav-btn" onclick="loadSection('programs')">Программы</button>
         <button class="nav-btn" onclick="loadSection('applications')">Заявки</button>
         <button class="nav-btn" onclick="loadSection('staff')">Сотрудники</button>
         <button class="nav-btn" onclick="loadSection('home')">Главная и Контакты</button>
@@ -136,6 +137,19 @@
     <div class="popover-arrow"></div>
 </div>
 
+<div id="delete-confirm-modal" class="modal-overlay" style="display:none; z-index: 11000;">
+    <div class="modal-card" style="max-width: 400px; text-align: center; border: 2px solid;">
+        <div class="modal-body" style="padding: 40px 20px;">
+            <h3 style="font-size: 20px; margin-top: 0; margin-bottom: 10px;">Удалить запись?</h3>
+            <p id="delete-modal-text" style="color: #666; margin-bottom: 30px; font-size: 14px;">Вы действительно хотите удалить эту запись? Действие нельзя будет отменить.</p>
+            <div style="display: flex; gap: 15px;">
+                <button type="button" class="btn" onclick="closeDeleteConfirm()" style="background: #eee; flex: 1; color: #333;">Отмена</button>
+                <button type="button" class="btn" onclick="executeDelete()" style="background: #ff6b6b; color: white; flex: 1;">Да, удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentSection = 'events';
     let selectedTarget = null;
@@ -169,6 +183,19 @@
             { name: 'name', label: 'Название тарифа', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
             { name: 'features_list', label: 'Список услуг', type: 'textarea' }
+        ],
+        'programs': [
+            { name: 'category', label: 'Для какой страницы', type: 'select', options: [
+                { value: 'birthday', label: 'День рождения' },
+                { value: 'graduation', label: 'Выпускной' }
+            ]},
+            { name: 'type', label: 'Тип программы', type: 'select', options: [
+                { value: 'show', label: 'Шоу-программа' },
+                { value: 'interactive', label: 'Интерактивная программа' }
+            ]},
+            { name: 'title', label: 'Название программы', type: 'text' },
+            { name: 'image', label: 'Картинка программы', type: 'file' },
+            { name: 'description', label: 'Описание', type: 'textarea' }
         ],
         'applications': [
             { name: 'category', label: 'Категория', type: 'select', options: [
@@ -394,9 +421,9 @@
         const addBtn = document.getElementById('add-btn');
         const titleEl = document.getElementById('section-title');
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий', 'staff': 'Сотрудники театра' };
+        const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'programs': 'Шоу и Интерактивные программы', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий', 'staff': 'Сотрудники театра' };
         titleEl.innerText = titles[section] || 'Панель управления';
-        if (addBtn) addBtn.style.display = (['events', 'tariffs', 'staff'].includes(section)) ? 'block' : 'none';
+        if (addBtn) addBtn.style.display = (['events', 'tariffs', 'staff', 'programs'].includes(section)) ? 'block' : 'none';
         if (section === 'calendar') {
             try {
                 const response = await fetch('/calendar-page/');
@@ -430,56 +457,90 @@
     }
 
     function renderTable(data) {
-    const head = document.getElementById('table-head'), body = document.getElementById('table-body');
-    head.innerHTML = ''; body.innerHTML = '';
-    if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
+        const head = document.getElementById('table-head'), body = document.getElementById('table-body');
+        head.innerHTML = ''; body.innerHTML = '';
+        if (!data || data.length === 0) { body.innerHTML = '<tr><td colspan="100%">Пусто</td></tr>'; return; }
 
-    const isApp = currentSection === 'applications';
-    
-    let keys = isApp ? ['full_name', 'phone', 'event_date'] : 
-            (currentSection === 'events' ? ['title', 'date', 'price'] : 
-            (currentSection === 'staff' ? ['full_name', 'role', 'calendar_btn'] : ['name', 'price', 'category']));
-
-    let labels = isApp ? ['ИМЯ', 'НОМЕР', 'ДАТА'] : 
-                (currentSection === 'events' ? ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'] : 
-                (currentSection === 'staff' ? ['ИМЯ', 'РОЛЬ', 'ГРАФИК'] : ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ']));
-
-    labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
-    head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
-
-    data.forEach(item => {
-        if (isApp && item.status === 'approved') return;
-        let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
+        const isApp = currentSection === 'applications';
         
-        keys.forEach(k => {
-            if (k === 'calendar_btn') {
-                row += `<td><button class="staff-calendar-trigger" onclick="event.stopPropagation(); openStaffCalendar(event, ${item.id}, '${item.full_name}')">📅 Календарь</button></td>`;
-            } 
-            else if (k === 'role') {
-                const rolesData = JSON.stringify(item.roles || []).replace(/"/g, '&quot;');
-                row += `<td><button class="staff-minor-btn" onclick="event.stopPropagation(); openRolesPopover(event, ${rolesData})">посмотреть</button></td>`;
-            } 
-            else if (isApp && k === 'event_date') {
-                let datePart = item.event_date ? item.event_date.split('-').reverse().join('.') : '-';
-                let timePart = item.event_time ? item.event_time.substring(0, 5) : '00:00';
-                
-                row += `<td>${datePart} ${timePart}</td>`;
-            }
-            else {
-                let v = item[k] || '-';
-                if (!isApp && (k === 'date' || k === 'event_date')) v = formatDate(v);
-                row += `<td>${v}</td>`;
-            }
-        });
+        let keys = [];
+        let labels = [];
 
-        if (isApp) {
-            const trans = {'pending': 'Новая заявка!', 'processing': 'На рассмотрении'};
-            row += `<td class="table-status-wrapper"><span class="status-badge status-${item.status}">${trans[item.status] || item.status}</span><button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button></td>`;
-        } else {
-            row += `<td><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button><button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button></td>`;
+        switch (currentSection) {
+            case 'applications':
+                keys = ['full_name', 'phone', 'event_date'];
+                labels = ['ИМЯ', 'НОМЕР', 'ДАТА'];
+                break;
+            case 'events':
+                keys = ['title', 'date', 'price'];
+                labels = ['НАЗВАНИЕ', 'ДАТА', 'ЦЕНА'];
+                break;
+            case 'staff':
+                keys = ['full_name', 'role', 'calendar_btn'];
+                labels = ['ИМЯ', 'РОЛЬ', 'ГРАФИК'];
+                break;
+            case 'programs':
+                keys = ['title', 'type', 'category']; 
+                labels = ['НАЗВАНИЕ', 'ТИП ПРОГРАММЫ', 'КАТЕГОРИЯ'];
+                break;
+            default:
+                keys = ['name', 'price', 'category'];
+                labels = ['НАЗВАНИЕ', 'ЦЕНА', 'КАТЕГОРИЯ'];
+                break;
         }
-        row += `</tr>`;
-        body.innerHTML += row;
+
+        labels.forEach(l => head.innerHTML += `<th>${l}</th>`);
+        head.innerHTML += `<th>${isApp ? 'СТАТУС' : 'ДЕЙСТВИЯ'}</th>`;
+
+        data.forEach(item => {
+            if (isApp && item.status === 'approved') return;
+            let row = `<tr class="${isApp ? 'clickable-row' : ''}" onclick='${isApp ? `openEditModal(${JSON.stringify(item)})` : ""}'>`;
+            
+            keys.forEach(k => {
+                if (k === 'calendar_btn') {
+                    row += `<td><button class="staff-calendar-trigger" onclick="event.stopPropagation(); openStaffCalendar(event, ${item.id}, '${item.full_name}')">📅 Календарь</button></td>`;
+                } 
+                else if (k === 'role') {
+                    const rolesData = JSON.stringify(item.roles || []).replace(/"/g, '&quot;');
+                    row += `<td><button class="staff-minor-btn" onclick="event.stopPropagation(); openRolesPopover(event, ${rolesData})">посмотреть</button></td>`;
+                } 
+                else if (isApp && k === 'event_date') {
+                    let datePart = item.event_date ? item.event_date.split('-').reverse().join('.') : '-';
+                    let timePart = item.event_time ? item.event_time.substring(0, 5) : '00:00';
+                    row += `<td>${datePart} ${timePart}</td>`;
+                }
+                else {
+                    let v = item[k] || '-';
+                    if (!isApp && (k === 'date' || k === 'event_date')) v = formatDate(v);
+                    
+                    if (currentSection === 'programs') {
+                        if (k === 'type') {
+                            const types = { 'show': 'Шоу-программа', 'interactive': 'Интерактивная' };
+                            v = types[v] || v;
+                        }
+                        if (k === 'category') {
+                            const cats = { 'birthday': 'День рождения', 'graduation': 'Выпускной' };
+                            v = cats[v] || v;
+                        }
+                    }
+                    
+                    if (currentSection === 'tariffs' && k === 'category') {
+                        const cats = { 'birthday': 'День рождения', 'graduation': 'Выпускной', 'spectacle': 'Спектакль' };
+                        v = cats[v] || v;
+                    }
+
+                    row += `<td>${v}</td>`;
+                }
+            });
+
+            if (isApp) {
+                const trans = {'pending': 'Новая заявка!', 'processing': 'На рассмотрении'};
+                row += `<td class="table-status-wrapper"><span class="status-badge status-${item.status}">${trans[item.status] || item.status}</span><button class="table-quick-remove" onclick="event.stopPropagation(); deleteItem(${item.id})">&times;</button></td>`;
+            } else {
+                row += `<td><button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>Редактировать</button><button class="btn btn-delete" onclick="event.stopPropagation(); deleteItem(${item.id})">Удалить</button></td>`;
+            }
+            row += `</tr>`;
+            body.innerHTML += row;
         });
     }
 
@@ -645,9 +706,64 @@
         }
     };
 
-    async function deleteItem(id) { if (confirm('Удалить?')) { await fetch(`/api/${currentSection}/${id}/`, { method: 'DELETE', headers: { 'X-CSRFToken': '{{ csrf_token }}' } }); loadSection(currentSection); } }
+    let itemIdToDelete = null;
 
-    
+    function deleteItem(id) {
+        itemIdToDelete = id;
+        
+        const textEl = document.getElementById('delete-modal-text');
+        if (currentSection === 'events') {
+            textEl.innerText = 'Вы действительно хотите удалить этот спектакль?';
+        } else if (currentSection === 'tariffs') {
+            textEl.innerText = 'Вы действительно хотите удалить этот тариф?';
+        } else if (currentSection === 'staff') {
+            textEl.innerText = 'Вы действительно хотите удалить сотрудника из базы?';
+        } else if (currentSection === 'programs') {
+            textEl.innerText = 'Вы действительно хотите удалить сотрудника из базы?';    
+        } else {
+            textEl.innerText = 'Вы действительно хотите удалить эту запись? Действие нельзя будет отменить.';
+        }
+
+        document.getElementById('delete-confirm-modal').style.display = 'flex';
+    }
+
+    function closeDeleteConfirm() {
+        document.getElementById('delete-confirm-modal').style.display = 'none';
+        itemIdToDelete = null;
+    }
+
+    async function executeDelete() {
+        if (!itemIdToDelete) return;
+
+        try {
+            const response = await fetch(`/api/${currentSection}/${itemIdToDelete}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+
+            if (response.ok) {
+                closeDeleteConfirm();
+                
+                const toastText = document.getElementById('toast-text');
+                if (toastText) toastText.innerText = 'Запись успешно удалена!';
+                const toast = document.getElementById('success-toast');
+                if (toast) {
+                    toast.style.display = 'flex';
+                    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+                }
+
+                loadSection(currentSection);
+            } else {
+                alert('Ошибка при удалении записи');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Произошла ошибка соединения с серверовать');
+        }
+    }
+
     function approveApplication() {
         const id = document.getElementById('field-id').value;
         if (!id) return;

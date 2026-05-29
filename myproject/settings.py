@@ -56,7 +56,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'theatre_db',
         'USER': 'postgres',
-        'PASSWORD': '123',
+        'PASSWORD': '1111',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -93,4 +93,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = 'kenzhalieva05@mail.ru'
+EMAIL_HOST_PASSWORD = 'tEME4rXaxSDqltbwylK4' 
+DEFAULT_FROM_EMAIL = 'kenzhalieva05@mail.ru'
 

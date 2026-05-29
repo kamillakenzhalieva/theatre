@@ -136,7 +136,8 @@ class Application(models.Model):
         related_name='applications'
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Статус")
-
+    is_notified = models.BooleanField(default=False)
+    
     def __str__(self):
         return f"{self.full_name} — {self.get_category_display()} ({self.status})"
 

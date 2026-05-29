@@ -101,6 +101,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         raw_cat = data.get('category')
         if raw_cat in cat_map:
             data['category'] = cat_map[raw_cat]
+        tariff_obj = None
+        show_obj = None
+        program_obj = None
 
         if data.get('category') == 'spectacle':
             spec_name = data.get('tariff')
@@ -108,6 +111,25 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 old_msg = data.get('message', '')
                 data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
             data['tariff'] = None
+            data['chosen_show'] = None
+            data['chosen_program'] = None
+        else:
+
+            category = data.get('category')
+            tariff_name = data.get('tariff')
+            if tariff_name and isinstance(tariff_name, str):
+                tariff_obj = Tariff.objects.filter(category=category, name=tariff_name.strip()).first()
+                data['tariff'] = tariff_obj.id if tariff_obj else None
+
+            show_title = data.get('chosen_show')
+            if show_title and isinstance(show_title, str):
+                show_obj = Program.objects.filter(category=category, type='show', title=show_title.strip()).first()
+                data['chosen_show'] = show_obj.id if show_obj else None
+
+            program_title = data.get('chosen_program')
+            if program_title and isinstance(program_title, str):
+                program_obj = Program.objects.filter(category=category, type='interactive', title=program_title.strip()).first()
+                data['chosen_program'] = program_obj.id if program_obj else None
 
         serializer = self.get_serializer(data=data)
         
@@ -118,8 +140,11 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         if request.data.get('dry_run'):
             return Response({"status": "available"}, status=status.HTTP_200_OK)
-            
-        instance = serializer.save()
+        instance = serializer.save(
+            tariff=tariff_obj if data.get('category') != 'spectacle' else None,
+            chosen_show=show_obj,
+            chosen_program=program_obj
+        )
 
         group_id = request.data.get('group')
         event_id = request.data.get('event')
@@ -128,8 +153,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             from .models import Event
             # Event.objects.filter(id=event_id).update(assigned_group_id=group_id)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_data = serializer.data
+        response_data['tariff'] = instance.tariff.name if instance.tariff else (spec_name if data.get('category') == 'spectacle' else None)
+        response_data['chosen_show'] = instance.chosen_show.title if instance.chosen_show else None
+        response_data['chosen_program'] = instance.chosen_program.title if instance.chosen_program else None
 
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
 def calendar_events_api(request):
     data = []
     for ev in Event.objects.filter(is_active=True):
@@ -156,7 +186,7 @@ def calendar_events_api(request):
             }
         })
 
-    apps = Application.objects.exclude(event_date__isnull=True).exclude(event_time__isnull=True)
+    apps = Application.objects.filter(status='approved').exclude(event_date__isnull=True).exclude(event_time__isnull=True)
     for ap in apps:
         assign = Assignment.objects.filter(application=ap).first()
         

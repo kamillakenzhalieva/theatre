@@ -4,6 +4,8 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django_better_admin_arrayfield.models.fields import ArrayField as BetterArrayField
 from django.utils.timezone import make_aware, is_naive
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class HomePage(models.Model):
     welcome_text = models.CharField(max_length=255, verbose_name="Заголовок приветствия")
@@ -19,6 +21,30 @@ class HomePage(models.Model):
     class Meta:
         verbose_name = "Главная страница и контакты"
 
+
+class Staff(models.Model):
+    full_name = models.CharField(max_length=255, verbose_name="ФИО сотрудника")
+    roles = BetterArrayField(
+        models.CharField(max_length=100, blank=True),
+        verbose_name="Роли",
+        blank=True,
+        default=list
+    )
+
+    def __str__(self):
+        return self.full_name
+
+    class Meta:
+        verbose_name = "Сотрудник"
+        verbose_name_plural = "Сотрудники"
+
+class StaffGroup(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Название группы")
+    members = models.ManyToManyField(Staff, related_name='groups', verbose_name="Члены группы")
+
+    def __str__(self):
+        return self.name
+    
 class Event(models.Model):
     title = models.CharField(max_length=200, verbose_name="Название")
     short_description = models.CharField(max_length=300, blank=True, verbose_name="Краткое описание")
@@ -28,6 +54,13 @@ class Event(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
     image = models.ImageField(upload_to='events/', blank=True, null=True, verbose_name="Постер")
     is_active = models.BooleanField(default=True, verbose_name="Отображать")
+    assigned_group = models.ForeignKey(
+        StaffGroup, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="Назначенная команда"
+    )
 
     def __str__(self):
         return self.title
@@ -127,28 +160,6 @@ class Program(models.Model):
         verbose_name = "Программа"
         verbose_name_plural = "Программы"
 
-class Staff(models.Model):
-    full_name = models.CharField(max_length=255, verbose_name="ФИО сотрудника")
-    roles = BetterArrayField(
-        models.CharField(max_length=100, blank=True),
-        verbose_name="Роли",
-        blank=True,
-        default=list
-    )
-
-    def __str__(self):
-        return self.full_name
-
-    class Meta:
-        verbose_name = "Сотрудник"
-        verbose_name_plural = "Сотрудники"
-
-class StaffGroup(models.Model):
-    name = models.CharField(max_length=100, verbose_name="Название группы")
-    members = models.ManyToManyField(Staff, related_name='groups', verbose_name="Члены группы")
-
-    def __str__(self):
-        return self.name
 
 class Assignment(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, null=True, blank=True, verbose_name="Сотрудник")
@@ -165,29 +176,36 @@ class Assignment(models.Model):
         person = self.staff if self.staff else self.group
         return f"{person} -> {target}"
 
-    def _get_intervals(self, obj):
+    @staticmethod
+    def calculate_intervals(obj):
         if isinstance(obj, Application):
             if not obj.event_date or not obj.event_time:
                 return None, None
+            
+            # Базовая длительность 60 минут, если тариф не найден
             duration_minutes = 60
             if obj.category != 'spectacle' and obj.tariff and obj.tariff.duration:
-                d_str = str(obj.tariff.duration).lower()
+                d_str = str(obj.tariff.duration).lower().strip()
                 nums = re.findall(r'\d+', d_str)
                 if nums:
                     val = int(nums[0])
-                    duration_minutes = val * 60 if ('час' in d_str or 'ч' in d_str or val < 10) else val
+                    # Если указано в минутах, берем значение, если в часах — умножаем
+                    duration_minutes = val if 'мин' in d_str else val * 60
+            
+            # Прибавляем +60 минут (технический час)
+            total_duration = duration_minutes + 60
             
             start_dt = datetime.combine(obj.event_date, obj.event_time)
             if is_naive(start_dt): start_dt = make_aware(start_dt)
-            end_dt = start_dt + timedelta(minutes=duration_minutes + 60)
-            return start_dt, end_dt
+            return start_dt, start_dt + timedelta(minutes=total_duration)
 
         elif isinstance(obj, Event):
             if not obj.date: return None, None
             start_dt = obj.date
             if is_naive(start_dt): start_dt = make_aware(start_dt)
-            end_dt = start_dt + timedelta(hours=2)
-            return start_dt, end_dt
+            # Для репертуарных спектаклей фиксированно 2 часа
+            return start_dt, start_dt + timedelta(hours=2)
+            
         return None, None
 
     def clean(self):
@@ -195,37 +213,29 @@ class Assignment(models.Model):
         current_obj = self.application if self.application else self.event
         if not current_obj:
             raise ValidationError("Не выбрано мероприятие!")
-
-        curr_start, curr_end = self._get_intervals(current_obj)
-        if not curr_start:
-            return 
-
         
-        check_ids = []
-        if self.staff:
-            check_ids.append(self.staff.id)
-        if self.group:
-            check_ids.extend(self.group.members.values_list('id', flat=True))
-        
-        check_ids = list(set(check_ids)) 
-        for s_id in check_ids:
+        if self.staff_id:
+            curr_start, curr_end = self.calculate_intervals(current_obj)
+            if not curr_start: return
+
             others = Assignment.objects.filter(
-                models.Q(staff_id=s_id) | models.Q(group__members__id=s_id)
+                models.Q(staff_id=self.staff_id) | models.Q(group__members__id=self.staff_id)
             ).exclude(pk=self.pk).distinct()
 
             for other in others:
                 other_obj = other.application if other.application else other.event
                 if not other_obj: continue
-                
-                o_start, o_end = self._get_intervals(other_obj)
-                if o_start and o_end:
-                    if curr_start < o_end and curr_end > o_start:
-                        person = Staff.objects.get(id=s_id)
-                        raise ValidationError(
-                            f"Конфликт! {person.full_name} уже занят(а) на '{other_obj}' "
-                            f"({o_start.strftime('%H:%M')}-{o_end.strftime('%H:%M')})"
-                        )
+                o_start, o_end = self.calculate_intervals(other_obj)
+                if o_start and o_end and (curr_start < o_end and curr_end > o_start):
+                    raise ValidationError(f"Сотрудник {self.staff.full_name} жестко занят на другом мероприятии!")
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+@receiver(post_save, sender=Assignment)
+def update_assigned_group(sender, instance, **kwargs):
+    if instance.event:
+        Event.objects.filter(id=instance.event.id).update(assigned_group=instance.group)
+    if instance.application:
+        Application.objects.filter(id=instance.application.id).update(assigned_group=instance.group)

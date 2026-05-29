@@ -166,11 +166,11 @@ body {
     z-index: 10000;
     padding: 25px;
     width: 100%;
-    max-width: 700px; 
-    max-height: 90vh; 
+    max-width: 700px;
+    max-height: 90vh;
     display: flex;
-    flex-direction: column; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .form-group {
@@ -804,27 +804,27 @@ nav a:hover {
 
 .status-pending {
     background-color: #fff3cd;
-    color: #856404; 
+    color: #856404;
 }
 
 .status-processing {
     background-color: #cfe2ff;
-    color: #084298; 
+    color: #084298;
 }
 
 .status-approved {
     background-color: #d1e7dd;
-    color: #0f5132; 
+    color: #0f5132;
 }
 
 .status-rejected {
     background-color: #f8d7da;
-    color: #842029; 
+    color: #842029;
 }
 
 #form-fields {
     display: grid;
-    grid-template-columns: 1fr 1fr; 
+    grid-template-columns: 1fr 1fr;
     gap: 15px;
     max-height: 55vh;
     overflow-y: auto;
@@ -848,8 +848,8 @@ nav a:hover {
     color: #666;
 }
 
-.form-field-input, 
-.form-field-select, 
+.form-field-input,
+.form-field-select,
 .form-field-textarea {
     width: 100%;
     padding: 8px 12px;
@@ -860,7 +860,7 @@ nav a:hover {
 }
 
 .form-field-textarea {
-    grid-column: span 2; 
+    grid-column: span 2;
     resize: vertical;
 }
 
@@ -958,8 +958,8 @@ nav a:hover {
     color: #555;
 }
 
-.form-field input, 
-.form-field select, 
+.form-field input,
+.form-field select,
 .form-field textarea {
     width: 100%;
     padding: 12px 15px;
@@ -994,7 +994,7 @@ nav a:hover {
 .btn-submit-order:hover {
     background: rgba(62, 221, 163, 0.775);
     transform: scale(1.02);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 .modal-card {
@@ -1002,7 +1002,7 @@ nav a:hover {
     border-radius: 20px;
     display: flex;
     flex-direction: column;
-    overflow: hidden; 
+    overflow: hidden;
     padding: 0;
 }
 
@@ -1012,7 +1012,11 @@ nav a:hover {
 }
 
 
-.custom-select-wrapper { position: relative; user-select: none; }
+.custom-select-wrapper {
+    position: relative;
+    user-select: none;
+}
+
 .custom-select-trigger {
     padding: 10px 15px;
     border: 2px solid var(--mint);
@@ -1022,39 +1026,57 @@ nav a:hover {
     font-size: 14px;
     min-width: 220px;
 }
+
 .custom-options {
     position: absolute;
-    bottom: calc(100% + 5px); 
-    left: 0; right: 0;
+    bottom: calc(100% + 5px);
+    left: 0;
+    right: 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 10px;
-    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1100;
     max-height: 200px;
     overflow-y: auto;
 }
-.custom-options.show { display: block; }
-.option-item, .option-add {
+
+.custom-options.show {
+    display: block;
+}
+
+.option-item,
+.option-add {
     padding: 10px 15px;
     cursor: pointer;
     border-bottom: 1px solid #eee;
     transition: 0.2s;
 }
-.option-add { color: var(--mint); font-weight: bold; border-bottom: 2px solid #eee; }
-.option-item:hover, .option-add:hover { background: #f0fff4; }
+
+.option-add {
+    color: var(--mint);
+    font-weight: bold;
+    border-bottom: 2px solid #eee;
+}
+
+.option-item:hover,
+.option-add:hover {
+    background: #f0fff4;
+}
 
 .floating-popup {
     position: fixed;
-    top: 20%; left: 50%;
+    top: 20%;
+    left: 50%;
     width: 300px;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     z-index: 1200;
     border: 1px solid #ccc;
 }
+
 .popup-header {
     padding: 10px 15px;
     background: #f8f8f8;
@@ -1064,7 +1086,11 @@ nav a:hover {
     justify-content: space-between;
     border-bottom: 1px solid #eee;
 }
-.popup-body { padding: 15px; }
+
+.popup-body {
+    padding: 15px;
+}
+
 .checklist {
     max-height: 150px;
     overflow-y: auto;
@@ -1072,11 +1098,18 @@ nav a:hover {
     border: 1px solid #eee;
     padding: 5px;
 }
-.check-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
+
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 13px;
+}
 
 #group-editor-popover {
-    z-index: 2100; 
-    box-shadow: 5px 5px 20px rgba(0,0,0,0.2);
+    z-index: 2100;
+    box-shadow: 5px 5px 20px rgba(0, 0, 0, 0.2);
 }
 
 .option-item small:hover {
@@ -1095,11 +1128,14 @@ nav a:hover {
     cursor: pointer;
     transition: 0.2s;
 }
-.staff-view-btn:hover { background: #e0e0e0; }
+
+.staff-view-btn:hover {
+    background: #e0e0e0;
+}
 
 .staff-cal-trigger {
     background: white;
-    border: 1px solid var(--mint); 
+    border: 1px solid var(--mint);
     color: #555;
     padding: 5px 12px;
     border-radius: 15px;
@@ -1111,12 +1147,12 @@ nav a:hover {
 }
 
 .staff-popover-calendar {
-    width: 325px !important; 
+    width: 325px !important;
     height: 400px;
     position: absolute;
     z-index: 1000;
     background: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     border-radius: 12px;
     padding: 15px;
     width: 300px;
@@ -1137,7 +1173,7 @@ nav a:hover {
     color: #2d7a6a;
     border: 1px solid #c2e0d8;
     padding: 6px 12px;
-    border-radius: 20px; 
+    border-radius: 20px;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1171,9 +1207,10 @@ nav a:hover {
 td .staff-minor-btn {
     vertical-align: middle;
 }
+
 #staff-mini-calendar {
     max-width: 100%;
-    font-size: 11px; 
+    font-size: 11px;
 }
 
 #staff-mini-calendar .fc-col-header-cell-cushion {
@@ -1211,11 +1248,11 @@ td .staff-minor-btn {
     background: white;
     border: 1px solid #d1d1d1;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     z-index: 3000;
     padding: 12px 16px;
     min-width: 150px;
-    pointer-events: none; 
+    pointer-events: none;
 }
 
 .roles-popover-content {
@@ -1236,13 +1273,119 @@ td .staff-minor-btn {
 
 .popover-arrow {
     position: absolute;
-    left: -10px; 
+    left: -10px;
     top: 50%;
     transform: translateY(-50%);
     width: 0;
     height: 0;
     border-top: 8px solid transparent;
     border-bottom: 8px solid transparent;
-    border-right: 10px solid white; 
-    filter: drop-shadow(-2px 0px 2px rgba(0,0,0,0.05));
+    border-right: 10px solid white;
+    filter: drop-shadow(-2px 0px 2px rgba(0, 0, 0, 0.05));
+}
+
+/* Базовый контейнер для динамических уведомлений */
+.dynamic-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 999999 !important;
+    padding: 14px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: sans-serif;
+    font-size: 14px;
+    max-width: 350px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+/* Стили для предупреждения (warning) */
+.dynamic-toast.toast-warning {
+    background-color: #fff7e6;
+    border: 1px solid #ffe7ba;
+    color: #d46b08;
+}
+
+.dynamic-toast.toast-warning .toast-icon {
+    background-color: #ffa940;
+}
+
+/* Стили для ошибки (error) */
+.dynamic-toast.toast-error {
+    background-color: #fff0f6;
+    border: 1px solid #ffadd2;
+    color: #cf1322;
+}
+
+.dynamic-toast.toast-error .toast-icon {
+    background-color: #ff4d4f;
+}
+
+/* Общие стили для иконок внутри уведомлений */
+.dynamic-toast .toast-icon {
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* Базовое состояние: окно готово, прижато к углу, но полностью прозрачно и сдвинуто */
+.warning-toast {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    z-index: 999999 !important;
+    background-color: #fff7e6;
+    border: 1px solid #ffe7ba;
+    color: #d46b08;
+    padding: 14px 22px;
+    border-radius: 8px;
+    
+    /* Вместо display:none используем flex + pointer-events, чтобы анимация не ломалась */
+    display: flex; 
+    align-items: center;
+    gap: 12px;
+    font-family: sans-serif;
+    font-size: 14px;
+    max-width: 360px;
+    box-shadow: 0 4px 12px rgba(212, 107, 8, 0.15);
+    
+    /* Плавность сдвига и растворения */
+    transition: opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1), transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    transform: translateX(150%); /* Глубоко за экраном */
+    opacity: 0;
+    pointer-events: none; /* Чтобы не кликалось, пока скрыто */
+}
+
+/* Класс, который JS будет вешать для показа */
+.warning-toast.show {
+    transform: translateX(0); /* Вылетает на место */
+    opacity: 1;               /* Становится видимым */
+    pointer-events: auto;     /* Можно взаимодействовать */
+}
+
+/* Круглая иконка */
+.warning-toast-icon {
+    background-color: #ffa940;
+    color: white;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 13px;
+    flex-shrink: 0;
 }

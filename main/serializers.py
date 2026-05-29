@@ -1,6 +1,6 @@
-import re
 from datetime import timedelta, datetime
 from rest_framework import serializers
+from django.db import models
 from .models import HomePage, Event, Service, Tariff, Application, Program, Assignment, Staff, StaffGroup
 
 class HomePageSerializer(serializers.ModelSerializer):
@@ -51,7 +51,6 @@ class ApplicationSerializer(serializers.ModelSerializer):
         ]
     
     def get_assigned_target(self, obj):
-        from .models import Assignment
         assign = Assignment.objects.filter(application=obj).first()
         if assign:
             if assign.group:
@@ -65,71 +64,162 @@ class StaffSerializer(serializers.ModelSerializer):
         model = Staff
         fields = '__all__'
 
-class AssignmentSerializer(serializers.ModelSerializer):
+class StaffWithConflictSerializer(serializers.ModelSerializer):
+    is_busy = serializers.SerializerMethodField()
+    busy_with = serializers.SerializerMethodField()
+
     class Meta:
-        model = Assignment
-        fields = ['id', 'staff', 'application']
+        model = Staff
+        fields = ['id', 'full_name', 'roles', 'is_busy', 'busy_with']
 
-    def calc_interval(self, target_app):
-        dur = 60
-        if target_app.category != 'spectacle' and target_app.tariff and target_app.tariff.duration:
-            s = str(target_app.tariff.duration).lower().strip()
-            nums = re.findall(r'\d+', s)
-            if nums:
-                v = int(nums[0])
-                if 'мин' in s:
-                    dur = v
-                else:
-                    dur = v * 60
-        
-        if not target_app.event_date or not target_app.event_time:
-            return None, None
+    def get_is_busy(self, obj):
+        target_obj = self.context.get('target_event_obj')
+        if not target_obj: return False
+            
+        curr_start, curr_end = Assignment.calculate_intervals(target_obj)
+        if not curr_start: return False
 
-        start = datetime.combine(target_app.event_date, target_app.event_time)
-        end = start + timedelta(minutes=dur + 60)
-        return start, end
-    
-    def validate(self, data):
-        staff = data.get('staff') or (self.instance.staff if self.instance else None)
-        app = data.get('application') or (self.instance.application if self.instance else None)
+        current_assignment_id = self.context.get('current_assignment_id')
+        others = Assignment.objects.filter(
+            models.Q(staff_id=obj.id) | models.Q(group__members__id=obj.id)
+        )
+        if current_assignment_id:
+            others = others.exclude(pk=current_assignment_id)
 
-        if not staff or not app:
-            print("DEBUG: Данные не полные (нет сотрудника или заявки)")
-            return data
+        target_date = getattr(target_obj, 'event_date', getattr(target_obj, 'date', None))
+        if hasattr(target_date, 'date'): target_date = target_date.date()
 
-        curr_start, curr_end = self.calc_interval(app)
-        
-        print(f"\n=== DEBUG ВАЛИДАЦИЯ ===")
-        print(f"Сотрудник: {staff.full_name}")
-        print(f"Проверяем заявку: {app.full_name}")
-        print(f"Интервал НОВОЙ: {curr_start} --- {curr_end}")
+        for other in others.distinct():
+            other_obj = other.application if other.application else other.event
+            if not other_obj: continue
+            
+            other_date = getattr(other_obj, 'event_date', getattr(other_obj, 'date', None))
+            if hasattr(other_date, 'date'): other_date = other_date.date()
+            
+            if target_date != other_date: continue
 
-        existing = Assignment.objects.filter(staff=staff)
-        if self.instance:
-            existing = existing.exclude(pk=self.instance.pk)
+            o_start, o_end = Assignment.calculate_intervals(other_obj)
+            if o_start and o_end and (curr_start < o_end and curr_end > o_start):
+                return True
+        return False
 
-        for other in existing:
-            other_app = other.application
-            o_start, o_end = self.calc_interval(other_app)
+    def get_busy_with(self, obj):
+        target_obj = self.context.get('target_event_obj')
+        if not target_obj: return None
+        curr_start, curr_end = Assignment.calculate_intervals(target_obj)
+        if not curr_start: return None
 
-            if not o_start:
-                continue
-                
-            print(f"Сравниваем с существующей: {other_app.full_name}")
-            print(f"Интервал СТАРОЙ: {o_start} --- {o_end}")
+        current_assignment_id = self.context.get('current_assignment_id')
+        others = Assignment.objects.filter(
+            models.Q(staff_id=obj.id) | models.Q(group__members__id=obj.id)
+        )
+        if current_assignment_id:
+            others = others.exclude(pk=current_assignment_id)
 
-            if curr_start < o_end and curr_end > o_start:
-                print(f"!!! КОНФЛИКТ ОБНАРУЖЕН !!!")
-                raise serializers.ValidationError(
-                    f"Конфликт: {staff.full_name} уже занят на событии '{other_app.full_name}' до {o_end.strftime('%H:%M')}."
-                )
+        target_date = getattr(target_obj, 'event_date', getattr(target_obj, 'date', None))
+        if hasattr(target_date, 'date'): target_date = target_date.date()
 
-        print("DEBUG: Конфликтов не найдено, сохраняем.\n")
-        return data
-    
+        for other in others.distinct():
+            other_obj = other.application if other.application else other.event
+            if not other_obj: continue
+            
+            other_date = getattr(other_obj, 'event_date', getattr(other_obj, 'date', None))
+            if hasattr(other_date, 'date'): other_date = other_date.date()
+            
+            if target_date != other_date: continue
+
+            o_start, o_end = Assignment.calculate_intervals(other_obj)
+            if o_start and o_end and (curr_start < o_end and curr_end > o_start):
+                return {
+                    'title': str(other_obj),
+                    'time': f"{o_start.strftime('%H:%M')}-{o_end.strftime('%H:%M')}"
+                }
+        return None
+
 class StaffGroupSerializer(serializers.ModelSerializer):
+    members = StaffWithConflictSerializer(many=True, read_only=True)
+    has_busy_members = serializers.SerializerMethodField()
     member_names = serializers.StringRelatedField(source='members', many=True, read_only=True)
 
     class Meta:
         model = StaffGroup
-        fields = ['id', 'name', 'members', 'member_names']
+        fields = ['id', 'name', 'members', 'member_names', 'has_busy_members']
+
+    def get_has_busy_members(self, obj):
+        target_obj = self.context.get('target_event_obj')
+        if not target_obj: return False
+            
+        serializer = StaffWithConflictSerializer(
+            obj.members.all(), 
+            many=True, 
+            context=self.context
+        )
+        return any(member['is_busy'] for member in serializer.data)
+
+    def to_internal_value(self, data):
+        internal_data = super().to_internal_value(data)
+        if 'members' in data:
+            internal_data['members'] = data['members']
+        return internal_data
+
+    def create(self, validated_data):
+        members = validated_data.pop('members', None)
+        instance = StaffGroup.objects.create(**validated_data)
+        if members is not None:
+            instance.members.set(members)
+        return instance
+
+    def update(self, instance, validated_data):
+        members = validated_data.pop('members', None)
+        instance.name = validated_data.get('name', instance.name)
+        instance.save()
+        if members is not None:
+            instance.members.set(members)
+        return instance
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = ['id', 'staff', 'group', 'application', 'event']
+
+    def validate(self, data):
+        staff = data.get('staff') or (self.instance.staff if self.instance else None)
+        group = data.get('group') or (self.instance.group if self.instance else None)
+        app = data.get('application') or (self.instance.application if self.instance else None)
+        event = data.get('event') or (self.instance.event if self.instance else None)
+
+        target_obj = app if app else event
+        if not target_obj:
+            raise serializers.ValidationError("Необходимо выбрать мероприятие.")
+        if not staff and not group:
+            raise serializers.ValidationError("Необходимо выбрать сотрудника или команду.")
+
+        target_date = getattr(target_obj, 'event_date', getattr(target_obj, 'date', None))
+        if hasattr(target_date, 'date'): target_date = target_date.date()
+        
+        curr_start, curr_end = Assignment.calculate_intervals(target_obj)
+        if curr_start:
+            staff_list = [staff] if staff else list(group.members.all())
+            
+            for person in staff_list:
+                existing = Assignment.objects.filter(
+                    models.Q(staff=person) | models.Q(group__members=person)
+                ).distinct()
+                if self.instance:
+                    existing = existing.exclude(pk=self.instance.pk)
+
+                for other in existing:
+                    other_obj = other.application if other.application else other.event
+                    if not other_obj: continue
+                    
+                    other_date = getattr(other_obj, 'event_date', getattr(other_obj, 'date', None))
+                    if hasattr(other_date, 'date'): other_date = other_date.date()
+                    
+                    if target_date != other_date: continue
+
+                    o_start, o_end = Assignment.calculate_intervals(other_obj)
+                    if o_start and o_end and (curr_start < o_end and curr_end > o_start):
+                        raise serializers.ValidationError(
+                            f"Сотрудник {person.full_name} занят на событии '{other_obj}' ({o_start.strftime('%H:%M')}-{o_end.strftime('%H:%M')})."
+                        )
+        return data

@@ -48,6 +48,12 @@
                 month: 'Месяц'
             },
             events: '/api/calendar-data/',
+            eventContent: function(arg) {
+                let origTitle = arg.event.title || '';
+                // Отсекаем всё, что идет после дефиса или скобки, чтобы убрать команды и лишний мусор
+                let cleanTitle = origTitle.split('—')[0].split('(')[0].trim();
+                return { html: `<div class="fc-event-main-frame"><div class="fc-event-title">${cleanTitle}</div></div>` };
+            },
             dateClick: function(info) {
                 closeDetail();
                 document.getElementById('calendar-popover').style.display = 'block';
@@ -81,12 +87,14 @@
                 content.innerHTML = filtered.map(event => {
                     const time = event.start.includes('T') ? event.start.split('T')[1].substring(0, 5) : '--:--';
                     const type = event.extendedProps ? event.extendedProps.type : 'application';
+                    // Точно так же чистим названия в мини-списке за день
+                    let cleanTitle = event.title.split('—')[0].split('(')[0].trim();
 
                     return `
                         <div class="popover-item" onclick="openEventDetail('${event.id}', '${type}')">
                             <div class="popover-time">${time}</div>
                             <div class="popover-info">
-                                <span>${event.title}</span>
+                                <span>${cleanTitle}</span>
                             </div>
                         </div>
                     `;
@@ -98,86 +106,118 @@
     }
 
     function openEventDetail(id, type) {
-        closePopover();
-        const detailWindow = document.getElementById('event-detail-popover');
-        const detailContent = document.getElementById('detail-content');
-        
-        detailWindow.style.display = 'block';
-        detailContent.innerHTML = '<div style="font-size:14px; color: #999; padding: 20px;">Загрузка...</div>';
+    closePopover();
+    const detailWindow = document.getElementById('event-detail-popover');
+    const detailContent = document.getElementById('detail-content');
+    
+    detailWindow.style.maxHeight = '90vh';
+    detailWindow.style.overflow = 'hidden'; 
+    detailWindow.style.width = '500px';
+    detailWindow.style.padding = '40px 0 40px 40px'; 
+    detailWindow.style.borderRadius = '12px';
+    detailWindow.style.boxSizing = 'border-box';
+    
+    detailWindow.style.display = 'block';
+    detailContent.innerHTML = '<div style="font-size:14px; color: #999; padding: 10px;">Загрузка...</div>';
 
-        const cleanId = id.replace(/\D/g, ''); 
-        const isEvent = (type === 'event');
-        const apiPath = isEvent ? `/api/events/${cleanId}/` : `/api/applications/${cleanId}/`;
+    const cleanId = id.replace(/\D/g, ''); 
+    const isEvent = (type === 'event');
+    const apiPath = isEvent ? `/api/events/${cleanId}/` : `/api/applications/${cleanId}/`;
 
-        fetch(apiPath)
-            .then(res => {
-                if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
-                return res.json();
-            })
-            .then(data => {
-                const categories = { 'birthday': 'День рождения', 'graduation': 'Выпускной', 'spectacle': 'Спектакль' };
+    fetch(apiPath)
+        .then(res => {
+            if (!res.ok) throw new Error(`Ошибка: ${res.status}`);
+            return res.json();
+        })
+        .then(async (data) => {
+            const categories = { 'birthday': 'День рождения', 'graduation': 'Выпускной', 'spectacle': 'Спектакль' };
 
-                let rawDate = data.event_date || data.date || data.start || '';
-                const displayDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+            let rawDate = data.event_date || data.date || data.start || '';
+            const displayDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
 
-                let displayTime = '--:--';
-                if (data.event_time) {
-                    displayTime = data.event_time.substring(0, 5);
-                } else if (rawDate.includes('T')) {
-                    displayTime = rawDate.split('T')[1].substring(0, 5);
-                }
+            let displayTime = '--:--';
+            if (data.event_time) {
+                displayTime = data.event_time.substring(0, 5);
+            } else if (rawDate.includes('T')) {
+                displayTime = rawDate.split('T')[1].substring(0, 5);
+            }
 
-                detailContent.innerHTML = `
-                    <div class="detail-grid">
-                        <div class="section-divider">ОСНОВНОЕ</div>
-                        <div class="detail-field full-width">
-                            <span class="field-label">${isEvent ? 'Название спектакля' : 'ФИО Клиента'}</span>
-                            <div class="field-value" style="font-size: 16px; color: #5a9473;">${isEvent ? data.title : data.full_name}</div>
-                        </div>
+            let cleanTitle = (isEvent ? data.title : data.full_name) || '';
+            cleanTitle = cleanTitle.split('—')[0].split('(')[0].trim();
+
+            detailContent.innerHTML = `
+                <style>
+                    .scrolling-content::-webkit-scrollbar {
+                        width: 5px;
+                    }
+                    .scrolling-content::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                    .scrolling-content::-webkit-scrollbar-thumb {
+                        background-color: #ddd;
+                        border-radius: 10px;
+                    }
+                    .scrolling-content::-webkit-scrollbar-thumb:hover {
+                        background-color: #bbb;
+                    }
+                </style>
+                <div class="scrolling-content" style="max-height: calc(75vh - 80px); overflow-y: auto; padding-right: 40px; box-sizing: border-box;">
+                    <div class="detail-grid" style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                        <div class="section-divider" style="margin: 5px 0; font-size: 11px; font-weight: bold; color: #888;">ОСНОВНОЕ</div>
                         <div class="detail-field">
-                            <span class="field-label">Дата</span>
-                            <div class="field-value">${displayDate || 'Не указана'}</div>
+                            <span class="field-label" style="display:block; font-size:11px; color:#999;">${isEvent ? 'Название спектакля' : 'ФИО Клиента'}</span>
+                            <div class="field-value" style="font-size: 15px; font-weight: bold; color: #5a9473;">${cleanTitle}</div>
                         </div>
-                        <div class="detail-field">
-                            <span class="field-label">Время</span>
-                            <div class="field-value">${displayTime}</div>
+                        <div style="display: flex; gap: 15px;">
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">Дата</span>
+                                <div class="field-value">${displayDate || 'Не указана'}</div>
+                            </div>
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">Время</span>
+                                <div class="field-value">${displayTime}</div>
+                            </div>
                         </div>
 
                         ${!isEvent ? `
-                        <div class="section-divider">КОНТАКТЫ</div>
-                        <div class="detail-field">
-                            <span class="field-label">Телефон</span>
-                            <div class="field-value">${data.phone || '—'}</div>
-                        </div>
-                        <div class="detail-field">
-                            <span class="field-label">Email</span>
-                            <div class="field-value">${data.email || '—'}</div>
+                        <div class="section-divider" style="margin: 5px 0; font-size: 11px; font-weight: bold; color: #888;">КОНТАКТЫ</div>
+                        <div style="display: flex; gap: 15px;">
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">Телефон</span>
+                                <div class="field-value">${data.phone || '—'}</div>
+                            </div>
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">Email</span>
+                                <div class="field-value">${data.email || '—'}</div>
+                            </div>
                         </div>
                         ` : ''}
 
-                        <div class="section-divider">${isEvent ? 'ИНФОРМАЦИЯ' : 'ЗАКАЗ'}</div>
-                        <div class="detail-field">
-                            <span class="field-label">Категория</span>
-                            <div class="field-value">${categories[data.category] || (isEvent ? 'Спектакль' : '—')}</div>
+                        <div class="section-divider" style="margin: 5px 0; font-size: 11px; font-weight: bold; color: #888;">${isEvent ? 'ИНФОРМАЦИЯ' : 'ЗАКАЗ'}</div>
+                        <div style="display: flex; gap: 15px;">
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">Категория</span>
+                                <div class="field-value">${categories[data.category] || (isEvent ? 'Спектакль' : '—')}</div>
+                            </div>
+                            <div class="detail-field" style="flex: 1;">
+                                <span class="field-label" style="display:block; font-size:11px; color:#999;">${isEvent ? 'Цена билета' : 'Гости'}</span>
+                                <div class="field-value">${isEvent ? (data.price ? data.price + ' ₽' : '—') : (data.guests_count ? data.guests_count + ' чел.' : '—')}</div>
+                            </div>
                         </div>
                         <div class="detail-field">
-                            <span class="field-label">${isEvent ? 'Цена билета' : 'Гости'}</span>
-                            <div class="field-value">${isEvent ? (data.price ? data.price + ' ₽' : '—') : (data.guests_count ? data.guests_count + ' чел.' : '—')}</div>
-                        </div>
-                        <div class="detail-field full-width">
-                            <span class="field-label">Адрес / Локация</span>
+                            <span class="field-label" style="display:block; font-size:11px; color:#999;">Адрес / Локация</span>
                             <div class="field-value">${data.address || data.location || 'Не указан'}</div>
                         </div>
                         
                         ${isEvent ? `
-                        <div class="detail-field full-width">
-                            <span class="field-label">Краткое описание</span>
+                        <div class="detail-field">
+                            <span class="field-label" style="display:block; font-size:11px; color:#999;">Краткое описание</span>
                             <div class="field-value">${data.short_description || '—'}</div>
                         </div>
                         ` : `
-                        <div class="detail-field full-width">
-                            <span class="field-label">Программы</span>
-                            <div class="field-value">
+                        <div class="detail-field">
+                            <span class="field-label" style="display:block; font-size:11px; color:#999;">Программы</span>
+                            <div class="field-value" style="line-height: 1.4;">
                                 ${data.tariff_name ? `• Тариф: ${data.tariff_name}<br>` : ''}
                                 ${data.show_name ? `• Шоу: ${data.show_name}<br>` : ''}
                                 ${data.program_name ? `• Программа: ${data.program_name}` : ''}
@@ -186,17 +226,175 @@
                         </div>
                         `}
 
-                        <div class="detail-field full-width" style="background: #f9f9f9; border: none;">
-                            <span class="field-label">Описание / Комментарий</span>
-                            <div class="field-value">${data.message || data.description || '...'}</div>
+                        <div class="detail-field" style="background: #f9f9f9; padding: 8px; border-radius: 4px;">
+                            <span class="field-label" style="display:block; font-size:11px; color:#999;">Описание / Комментарий</span>
+                            <div class="field-value" style="white-space: pre-wrap;">${data.message || data.description || '...'}</div>
+                        </div>
+
+                        <div class="section-divider" style="margin: 5px 0; font-size: 11px; font-weight: bold; color: #888;">НАЗНАЧЕНИЕ КОМАНДЫ</div>
+                        <div class="detail-field">
+                            <div id="calendar-assignment-container">
+                                <div class="custom-select-wrapper">
+                                    <div class="custom-select-trigger" id="calendar-select-trigger" onclick="toggleCalendarAssignMenu(event)">Выберите команду...</div>
+                                    <div class="custom-options" id="calendar-options-list" style="max-height: 150px; overflow-y: auto;">
+                                        <div id="calendar-groups-list-area"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                            <button type="button" class="btn btn-add" style="padding: 8px 16px; font-size: 13px;" onclick="saveCalendarAssignment('${cleanId}', '${isEvent ? 'events' : 'applications'}')">Сохранить команду</button>
                         </div>
                     </div>
-                `;
-            })
-            .catch(err => {
-                console.error(err);
-                detailContent.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки данных: ${err.message}</div>`;
+                </div>
+            `;
+
+            selectedTarget = null;
+            const trigger = document.getElementById('calendar-select-trigger');
+
+            if (data.assigned_target) {
+                selectedTarget = {
+                    type: data.assigned_target.type,
+                    id: data.assigned_target.id,
+                    name: data.assigned_target.name
+                };
+                trigger.innerText = data.assigned_target.name;
+            } else {
+                try {
+                    const targetTypeQuery = isEvent ? `event=${cleanId}` : `application=${cleanId}`;
+                    const resAssign = await fetch(`/api/assignments/?${targetTypeQuery}`);
+                    const assignments = await resAssign.json();
+                    
+                    if (assignments.length > 0) {
+                        const active = assignments[0];
+                        if (active.group_details) {
+                            selectedTarget = { type: 'group', id: active.group, name: active.group_details.name };
+                            trigger.innerText = active.group_details.name;
+                        } else if (active.staff_details) {
+                            selectedTarget = { type: 'staff', id: active.staff, name: active.staff_details.full_name };
+                            trigger.innerText = active.staff_details.full_name;
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            await refreshCalendarGroupsList(cleanId);
+        })
+        .catch(err => {
+            console.error(err);
+            detailContent.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки данных: ${err.message}</div>`;
+        });
+}
+
+    function toggleCalendarAssignMenu(e) {
+        if (e) e.stopPropagation();
+        document.getElementById('calendar-options-list').classList.toggle('show');
+    }
+
+    async function refreshCalendarGroupsList(targetId) {
+        const area = document.getElementById('calendar-groups-list-area');
+        area.innerHTML = '<div style="padding:8px; font-size:12px; color:#999;">Проверка доступности команд...</div>';
+        
+        try {
+            const response = await fetch(`/api/groups/?application_id=${targetId}`);
+            if (!response.ok) throw new Error("Ошибка получения статуса команд");
+            const checkedGroups = await response.json();
+            
+            area.innerHTML = '';
+            if (checkedGroups.length === 0) {
+                area.innerHTML = '<div style="padding:8px; font-size:12px; color:#999;">Команды не созданы</div>';
+                return;
+            }
+
+            checkedGroups.forEach((group) => {
+                const hasConflicts = group.has_busy_members; 
+
+                const d = document.createElement('div');
+                d.className = 'option-item';
+                d.style.display = 'flex';
+                d.style.justifyContent = 'space-between';
+                d.style.alignItems = 'center';
+                d.style.padding = '8px 10px';
+                d.style.borderBottom = '1px solid #f0f0f0';
+                d.style.cursor = 'pointer';
+                
+                if (hasConflicts) {
+                    d.style.backgroundColor = '#fff5f5'; 
+                }
+
+                let warningIcon = '';
+                if (hasConflicts && group.members) {
+                    const busyStaff = group.members.filter(m => m.is_busy);
+                    let busyText = '';
+                    if (busyStaff.length === group.members.length) {
+                        busyText = 'Вся команда занята на это время.';
+                    } else {
+                        busyText = 'Заняты в это время:\n' + busyStaff.map(m => {
+                            const timeInfo = (m.busy_with && m.busy_with.time) ? ` (${m.busy_with.time})` : '';
+                            return `• ${m.full_name}${timeInfo}`;
+                        }).join('\n');
+                    }
+                    warningIcon = `<span class="conflict-exclamation" onclick="event.stopPropagation(); alert('${busyText}')" style="color:#ff4d4f; font-weight:bold; margin-left:6px; cursor:pointer; font-size:14px;" title="Посмотреть занятых сотрудников">❗</span>`;
+                }
+                
+                const leftPart = document.createElement('div');
+                leftPart.style.display = 'flex';
+                leftPart.style.alignItems = 'center';
+                leftPart.innerHTML = `<strong style="color:#1a1a1a;">${group.name}</strong>${warningIcon}`;
+
+                d.appendChild(leftPart);
+
+                d.onclick = () => {
+                    selectedTarget = { type: 'group', id: group.id };
+                    document.getElementById('calendar-select-trigger').innerText = group.name;
+                    toggleCalendarAssignMenu();
+                };
+                
+                area.appendChild(d);
             });
+        } catch (err) {
+            console.error(err);
+            area.innerHTML = '<div style="padding:8px; font-size:12px; color:#ff6b6b;">⚠️ Ошибка проверки команд</div>';
+        }
+    }
+
+    async function saveCalendarAssignment(targetId, section) {
+        if (!selectedTarget) {
+            showWarningToast('Выберите команду перед сохранением');
+            return;
+        }
+
+        const isEvent = (section === 'events');
+        const aData = {
+            [isEvent ? 'event' : 'application']: targetId,
+            [selectedTarget.type]: selectedTarget.id
+        };
+
+        const ar = await fetch('/api/assignments/', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': djangoCsrfToken }, 
+            body: JSON.stringify(aData) 
+        });
+        
+        if (ar.ok) {
+            const resData = await ar.json();
+            if (resData.status === 'warning') {
+                closeDetail();
+                showWarningToast(resData.message);
+                return;
+            }
+            closeDetail();
+            showToast('Команда успешно сохранена');
+        } else {
+            let errorMsg = 'Не удалось привязать команду.';
+            try {
+                const errData = await ar.json();
+                errorMsg = errData.detail || Object.values(errData).flat()[0] || errorMsg;
+            } catch(err) {}
+            closeDetail();
+            showWarningToast(errorMsg);
+        }
     }
 
     function closePopover() { document.getElementById('calendar-popover').style.display = 'none'; }
@@ -206,7 +404,7 @@
         const pop1 = document.getElementById('calendar-popover');
         const pop2 = document.getElementById('event-detail-popover');
         if (pop1.style.display === 'block' && !pop1.contains(e.target) && !e.target.closest('.fc-daygrid-day')) closePopover();
-        if (pop2.style.display === 'block' && !pop2.contains(e.target) && !e.target.closest('.fc-event')) closeDetail();
+        if (pop2.style.display === 'block' && !pop2.contains(e.target) && !e.target.closest('.fc-event') && !e.target.closest('.custom-select-wrapper')) closeDetail();
     });
 </script>
 </body>

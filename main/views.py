@@ -12,6 +12,7 @@ import re
 from django.http import JsonResponse
 from datetime import datetime, timedelta 
 from django.core.exceptions import ValidationError 
+from django.db import transaction
 
 
 def index(request):
@@ -96,29 +97,37 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        cat_map = {
-            'День Рождения': 'birthday',
-            'Выпускной': 'graduation',
-            'Спектакль': 'spectacle'
-        }
-        raw_category = data.get('category')
-        if raw_category in cat_map:
-            data['category'] = cat_map[raw_category]
+        cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
+        raw_cat = data.get('category')
+        if raw_cat in cat_map:
+            data['category'] = cat_map[raw_cat]
 
-        tariff_val = data.get('tariff')
-        if tariff_val and not str(tariff_val).isdigit():
-            tariff_obj = Tariff.objects.filter(name=tariff_val).first()
-            data['tariff'] = tariff_obj.id if tariff_obj else None
-
-        for field in ['chosen_show', 'chosen_program']:
-            val = data.get(field)
-            if val and not str(val).isdigit():
-                prog = Program.objects.filter(title=val).first()
-                data[field] = prog.id if prog else None
+        if data.get('category') == 'spectacle':
+            spec_name = data.get('tariff')
+            if spec_name:
+                old_msg = data.get('message', '')
+                data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
+            data['tariff'] = None
 
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        
+        if not serializer.is_valid():
+            error_msg = str(list(serializer.errors.values())[0][0])
+            error_msg = re.sub(r"ErrorDetail\(string='(.*?)', code='.*?'\)", r"\1", error_msg)
+            return Response({'status': 'warning', 'message': error_msg}, status=status.HTTP_200_OK)
+
+        if request.data.get('dry_run'):
+            return Response({"status": "available"}, status=status.HTTP_200_OK)
+            
+        instance = serializer.save()
+
+        group_id = request.data.get('group')
+        event_id = request.data.get('event')
+
+        if event_id and group_id:
+            from .models import Event
+            # Event.objects.filter(id=event_id).update(assigned_group_id=group_id)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 def calendar_events_api(request):
@@ -247,37 +256,142 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
 
     def create(self, request, *args, **kwargs):
-        try:
-            data = request.data.copy()
-            cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
-            raw_cat = data.get('category')
-            if raw_cat in cat_map:
-                data['category'] = cat_map[raw_cat]
+        data = request.data.copy()
+        
+        # 1. Логика преобразования данных (твоя старая)
+        cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
+        raw_cat = data.get('category')
+        if raw_cat in cat_map:
+            data['category'] = cat_map[raw_cat]
 
-            if data.get('category') == 'spectacle':
-                spec_name = data.get('tariff')
-                if spec_name:
-                    old_msg = data.get('message', '')
-                    data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
-                data['tariff'] = None
+        if data.get('category') == 'spectacle':
+            spec_name = data.get('tariff')
+            if spec_name:
+                old_msg = data.get('message', '')
+                data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
+            data['tariff'] = None
 
+        # 2. Очистка старых назначений перед созданием нового (ВАЖНО!)
+        # Используем transaction.atomic, чтобы удаление и создание прошли как одно действие
+        app_id = data.get('application')
+        event_id = data.get('event')
+
+        with transaction.atomic():
+            if app_id:
+                # Удаляем ВСЕ старые назначения для этой заявки
+                Assignment.objects.filter(application_id=app_id).delete()
+            elif event_id:
+                # Удаляем ВСЕ старые назначения для этого спектакля
+                Assignment.objects.filter(event_id=event_id).delete()
+
+            # 3. Валидация и создание
             serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
             
+            if not serializer.is_valid():
+                error_msg = "У выбранной команды обнаружены накладки во времени."
+                if serializer.errors:
+                    raw_error = list(serializer.errors.values())[0]
+                    if isinstance(raw_error, list):
+                        error_msg = raw_error[0]
+                    elif isinstance(raw_error, dict):
+                        error_msg = list(raw_error.values())[0][0]
+                    else:
+                        error_msg = str(raw_error)
+                
+                error_msg = re.sub(r"ErrorDetail\(string='(.*?)', code='.*?'\)", r"\1", str(error_msg))
+                return Response({
+                    'status': 'warning',
+                    'message': error_msg
+                }, status=status.HTTP_200_OK)
+
             if request.data.get('dry_run'):
                 return Response({"status": "available"}, status=status.HTTP_200_OK)
                 
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
-        except ValidationError as e:
-            msg = e.messages[0] if hasattr(e, 'messages') else str(e)
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
 class StaffGroupViewSet(viewsets.ModelViewSet):
     queryset = StaffGroup.objects.all()
     serializer_class = StaffGroupSerializer
     
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        
+        event_date = request.query_params.get('event_date')
+        event_time = request.query_params.get('event_time')
+        app_id = request.query_params.get('application_id')
+        event_obj_id = request.query_params.get('event_id')
+
+        if (not event_date or not event_time) and app_id:
+            try:
+                app = Application.objects.get(id=app_id)
+                event_date = app.event_date
+                event_time = app.event_time
+            except Application.DoesNotExist:
+                pass
+                
+        if (not event_date or not event_time) and event_obj_id:
+            try:
+                ev = Event.objects.get(id=event_obj_id)
+                if ev.date:
+                    event_date = ev.date.date()
+                    event_time = ev.date.time()
+            except Event.DoesNotExist:
+                pass
+
+        if event_date and event_time:
+            if hasattr(event_time, 'strftime'):
+                event_time_str = event_time.strftime('%H:%M')
+            else:
+                event_time_str = str(event_time)[:5]
+
+            busy_staff_q = Assignment.objects.filter(
+                Q(application__event_date=event_date, application__event_time__contains=event_time_str) |
+                Q(event__date__date=event_date, event__date__time__contains=event_time_str)
+            )
+            
+            if app_id:
+                busy_staff_q = busy_staff_q.exclude(application_id=app_id)
+            if event_obj_id:
+                busy_staff_q = busy_staff_q.exclude(event_id=event_obj_id)
+
+            busy_staff_ids = busy_staff_q.values_list('staff_id', flat=True).distinct()
+
+            custom_data = []
+            for group in queryset:
+                member_objects = group.members.all()
+                group_members_info = []
+                has_busy_members = False
+
+                for member in member_objects:
+                    is_busy = member.id in busy_staff_ids
+                    if is_busy:
+                        has_busy_members = True
+                    
+                    group_members_info.append({
+                        'id': member.id,
+                        'full_name': member.full_name,
+                        'is_busy': is_busy
+                    })
+
+                custom_data.append({
+                    'id': group.id,
+                    'name': group.name,
+                    'has_busy_members': has_busy_members,
+                    'members': group_members_info
+                })
+            return Response(custom_data)
+
+        custom_data = []
+        for group in queryset:
+            custom_data.append({
+                'id': group.id,
+                'name': group.name,
+                'has_busy_members': False,
+                'members': [{'id': m.id, 'full_name': m.full_name, 'is_busy': False} for m in group.members.all()]
+            })
+        return Response(custom_data)
+
 class ProgramViewSet(viewsets.ModelViewSet):
     queryset = Program.objects.all()
     serializer_class = ProgramSerializer

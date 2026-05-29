@@ -190,17 +190,14 @@ class Assignment(models.Model):
             if not obj.event_date or not obj.event_time:
                 return None, None
             
-            # Базовая длительность 60 минут, если тариф не найден
             duration_minutes = 60
             if obj.category != 'spectacle' and obj.tariff and obj.tariff.duration:
                 d_str = str(obj.tariff.duration).lower().strip()
                 nums = re.findall(r'\d+', d_str)
                 if nums:
                     val = int(nums[0])
-                    # Если указано в минутах, берем значение, если в часах — умножаем
                     duration_minutes = val if 'мин' in d_str else val * 60
             
-            # Прибавляем +60 минут (технический час)
             total_duration = duration_minutes + 60
             
             start_dt = datetime.combine(obj.event_date, obj.event_time)
@@ -211,7 +208,6 @@ class Assignment(models.Model):
             if not obj.date: return None, None
             start_dt = obj.date
             if is_naive(start_dt): start_dt = make_aware(start_dt)
-            # Для репертуарных спектаклей фиксированно 2 часа
             return start_dt, start_dt + timedelta(hours=2)
             
         return None, None

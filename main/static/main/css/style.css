@@ -1284,7 +1284,6 @@ td .staff-minor-btn {
     filter: drop-shadow(-2px 0px 2px rgba(0, 0, 0, 0.05));
 }
 
-/* Базовый контейнер для динамических уведомлений */
 .dynamic-toast {
     position: fixed;
     top: 20px;
@@ -1304,7 +1303,6 @@ td .staff-minor-btn {
     opacity: 0;
 }
 
-/* Стили для предупреждения (warning) */
 .dynamic-toast.toast-warning {
     background-color: #fff7e6;
     border: 1px solid #ffe7ba;
@@ -1315,7 +1313,6 @@ td .staff-minor-btn {
     background-color: #ffa940;
 }
 
-/* Стили для ошибки (error) */
 .dynamic-toast.toast-error {
     background-color: #fff0f6;
     border: 1px solid #ffadd2;
@@ -1326,7 +1323,6 @@ td .staff-minor-btn {
     background-color: #ff4d4f;
 }
 
-/* Общие стили для иконок внутри уведомлений */
 .dynamic-toast .toast-icon {
     color: white;
     border-radius: 50%;
@@ -1340,7 +1336,6 @@ td .staff-minor-btn {
     flex-shrink: 0;
 }
 
-/* Базовое состояние: окно готово, прижато к углу, но полностью прозрачно и сдвинуто */
 .warning-toast {
     position: fixed;
     top: 25px;
@@ -1351,31 +1346,25 @@ td .staff-minor-btn {
     color: #d46b08;
     padding: 14px 22px;
     border-radius: 8px;
-    
-    /* Вместо display:none используем flex + pointer-events, чтобы анимация не ломалась */
-    display: flex; 
+    display: flex;
     align-items: center;
     gap: 12px;
     font-family: sans-serif;
     font-size: 14px;
     max-width: 360px;
     box-shadow: 0 4px 12px rgba(212, 107, 8, 0.15);
-    
-    /* Плавность сдвига и растворения */
     transition: opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1), transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-    transform: translateX(150%); /* Глубоко за экраном */
+    transform: translateX(150%);
     opacity: 0;
-    pointer-events: none; /* Чтобы не кликалось, пока скрыто */
+    pointer-events: none;
 }
 
-/* Класс, который JS будет вешать для показа */
 .warning-toast.show {
-    transform: translateX(0); /* Вылетает на место */
-    opacity: 1;               /* Становится видимым */
-    pointer-events: auto;     /* Можно взаимодействовать */
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
-/* Круглая иконка */
 .warning-toast-icon {
     background-color: #ffa940;
     color: white;
@@ -1388,4 +1377,22 @@ td .staff-minor-btn {
     font-weight: bold;
     font-size: 13px;
     flex-shrink: 0;
+}
+
+.btn-delete-muted {
+    background: #fff5f5;
+    color: #e53e3e;
+    border: 1px solid #feb2b2;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-delete-muted:hover {
+    background: #e53e3e;
+    color: #ffffff;
+    border-color: #e53e3e;
 }

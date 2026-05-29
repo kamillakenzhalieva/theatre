@@ -403,9 +403,13 @@
     document.addEventListener('mousedown', function(e) {
         const pop1 = document.getElementById('calendar-popover');
         const pop2 = document.getElementById('event-detail-popover');
-        if (pop1.style.display === 'block' && !pop1.contains(e.target) && !e.target.closest('.fc-daygrid-day')) closePopover();
-        if (pop2.style.display === 'block' && !pop2.contains(e.target) && !e.target.closest('.fc-event') && !e.target.closest('.custom-select-wrapper')) closeDetail();
-    });
+        if (pop1 && pop1.style.display === 'block' && !pop1.contains(e.target) && !e.target.closest('.fc-daygrid-day')) {
+            closePopover();
+        }
+
+        if (pop2 && pop2.style.display === 'block' && !pop2.contains(e.target) && !e.target.closest('.fc-event') && !e.target.closest('.custom-select-wrapper')) {
+            closeDetail();
+        }});
 </script>
 </body>
 </html>

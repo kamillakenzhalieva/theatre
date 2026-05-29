@@ -132,6 +132,20 @@
     </div>
 </div>
 
+<div id="group-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card1">
+        <h2 id="group-modal-title">Создание команды</h2>
+        <input type="hidden" id="group-id">
+        <input type="text" id="group-name-input" class="form-field-input" placeholder="Название команды...">
+        <div id="group-staff-list" class="checklist" style="max-height: 200px; overflow-y: auto; margin: 15px 0; border: 1px solid #ccc; padding: 10px;">
+            </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn" onclick="document.getElementById('group-modal').style.display='none'">Отмена</button>
+            <button class="btn btn-add" onclick="saveGroupToDB()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
 
 
 <script>
@@ -166,6 +180,7 @@
                 { value: 'spectacle', label: 'Спектакль' }
             ]},
             { name: 'name', label: 'Название тарифа', type: 'text' },
+            { name: 'duration', label: 'Длительность', type: 'text' },
             { name: 'price', label: 'Цена', type: 'number' },
             { name: 'features_list', label: 'Список услуг', type: 'textarea' }
         ],
@@ -199,9 +214,9 @@
             { name: 'address', label: 'Адрес', type: 'text' },
             { name: 'event_date', label: 'Дата события', type: 'date' },
             { name: 'event_time', label: 'Время события', type: 'time' },
-            { name: 'tariff', label: 'Выбранный тариф', type: 'text' }, 
-            { name: 'chosen_show', label: 'Шоу-программа', type: 'text' },
-            { name: 'chosen_program', label: 'Интерактив', type: 'text' },
+            { name: 'tariff_name', label: 'Выбранный тариф', type: 'text' }, 
+            { name: 'show_name', label: 'Шоу-программа', type: 'text' },
+            { name: 'program_name', label: 'Интерактив', type: 'text' },
             { name: 'guests_count', label: 'Кол-во гостей', type: 'number' },
             { name: 'message', label: 'Комментарий', type: 'textarea' }
         ],
@@ -441,7 +456,7 @@
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         const titles = { 'events': 'Управление спектаклями', 'tariffs': 'Настройка тарифов', 'programs': 'Шоу и Интерактивные программы', 'applications': 'Входящие заявки', 'home': 'Главная страница и контакты', 'calendar': 'Календарь мероприятий', 'staff': 'Сотрудники театра' };
         titleEl.innerText = titles[section] || 'Панель управления';
-        if (addBtn) addBtn.style.display = (['events', 'tariffs', 'staff', 'programs'].includes(section)) ? 'block' : 'none';
+        if (addBtn) addBtn.style.display = (['events', 'tariffs', 'programs'].includes(section)) ? 'block' : 'none';
         if (section === 'calendar') {
             try {
                 const response = await fetch('/calendar-page/');
@@ -457,12 +472,143 @@
             } catch (e) { contentArea.innerHTML = 'Ошибка загрузки'; }
             return;
         }
+        if (section === 'staff') {
+            contentArea.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3>Сотрудники</h3>
+                    <button class="btn btn-add" onclick="openCreateModal()">+ Добавить сотрудника</button>
+                </div>
+                <div class="table-container" style="height: 245px; overflow-y: auto; border: 1px solid #eee; margin-bottom: 20px; position: relative;">
+                    <table class="admin-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                        <thead style="background: white;">
+                            <tr id="table-head"></tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Команды</h3>
+                    <button class="btn btn-add" onclick="openGroupModal()">+ Создать команду</button>
+                </div>
+                <div class="table-container" style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; margin-top:10px;">
+                    <table class="admin-table">
+                        <thead><tr><th>Название</th><th>Участники</th><th>Действия</th></tr></thead>
+                        <tbody id="groups-list-body"></tbody>
+                    </table>
+                </div>
+            `;
+            // Загружаем данные
+            const [sRes, gRes] = await Promise.all([fetch('/api/staff/'), fetch('/api/groups/')]);
+            renderTable(await sRes.json());
+            
+            const gData = await gRes.json();
+            document.getElementById('groups-list-body').innerHTML = gData.map(g => `
+                <tr>
+                    <td>${g.name}</td>
+                    <td>${g.members.map(m => m.full_name).join(', ')}</td>
+                    <td>
+                        <button class="btn btn-edit" onclick="editGroup(${g.id})">Редактировать</button>
+                        <button class="btn btn-delete" onclick="deleteGroup(${g.id})">Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
+            return;
+        }
+
+        // 4. Рендер ВСЕХ остальных (Спектакли, Тарифы и т.д.)
+        // Создаем чистую структуру для стандартных разделов
         contentArea.innerHTML = `<table class="admin-table"><thead><tr id="table-head"></tr></thead><tbody id="table-body"></tbody></table>`;
         try {
             const response = await fetch(`/api/${section}/`);
             const data = await response.json();
             section === 'home' ? renderHomeSection(data) : renderTable(data);
-        } catch (e) { document.getElementById('table-body').innerHTML = '<tr><td>Ошибка</td></tr>'; }
+        } catch (e) { 
+            document.getElementById('table-body').innerHTML = '<tr><td>Ошибка загрузки данных</td></tr>'; 
+        }
+    }
+
+    // Открытие модалки для создания или редактирования
+    async function openGroupModal(group = null) {
+        const modal = document.getElementById('group-modal');
+        const staffList = document.getElementById('group-staff-list');
+        
+        // Заголовок и поля
+        document.getElementById('group-modal-title').innerText = group ? 'Редактирование команды' : 'Создание команды';
+        document.getElementById('group-id').value = group ? group.id : '';
+        document.getElementById('group-name-input').value = group ? group.name : '';
+        
+        // Загружаем всех сотрудников
+        const res = await fetch('/api/staff/');
+        const staff = await res.json();
+        
+        // ИСПРАВЛЕНИЕ: здесь мы теперь просто берем массив чисел, 
+        // так как group.members — это массив [1, 2, ...]
+        const selectedIds = (group && group.members) ? group.members.map(String) : [];
+        
+        staffList.innerHTML = staff.map(s => {
+            // Сравниваем ID сотрудника (строка) с массивом ID (строки)
+            const isChecked = selectedIds.includes(String(s.id)) ? 'checked' : '';
+            
+            return `
+                <label style="display:block; margin:5px 0;">
+                    <input type="checkbox" name="group-staff" value="${s.id}" ${isChecked}> 
+                    ${s.full_name}
+                </label>
+            `;
+        }).join('');
+        
+        modal.style.display = 'flex';
+    }
+
+    // Отправка в БД
+    async function saveGroupToDB() {
+        const id = document.getElementById('group-id').value;
+        const name = document.getElementById('group-name-input').value;
+        const memberIds = Array.from(document.querySelectorAll('input[name="group-staff"]:checked')).map(i => parseInt(i.value));
+        
+        const method = id ? 'PATCH' : 'POST';
+        const url = id ? `/api/groups/${id}/` : '/api/groups/';
+        
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': djangoCsrfToken },
+            body: JSON.stringify({ name: name, members: memberIds })
+        });
+        
+        if (res.ok) {
+            document.getElementById('group-modal').style.display = 'none';
+            loadSection('staff'); // Перезагружаем секцию
+        } else {
+            alert('Ошибка при сохранении команды');
+        }
+    }
+
+    // Удаление
+    async function deleteGroup(id) {
+    // Вызываем deleteItem, передавая флаг, что это группа
+        deleteItem(id, true); 
+    }
+
+    // Редактирование (подготовка)
+    async function editGroup(id) {
+        const res = await fetch(`/api/groups/${id}/`);
+        const group = await res.json();
+        openGroupModal(group);
+    }
+
+    function renderGroupsOnly(groups) {
+        const body = document.getElementById('groups-table-body');
+        body.innerHTML = groups.map(g => `
+            <tr>
+                <td>${g.name}</td>
+                <td>${g.members.map(m => m.full_name).join(', ')}</td>
+                <td>
+                    <button class="btn btn-edit" onclick="editGroup(${g.id})">Ред.</button>
+                    <button class="btn btn-delete" onclick="deleteGroup(${g.id})">Удалить</button>
+                </td>
+            </tr>
+        `).join('');
     }
 
     function renderTable(data) {
@@ -808,13 +954,22 @@
 
     let itemIdToDelete = null;
 
-    function deleteItem(id) {
+    function deleteItem(id, isGroup = false) { // Добавили параметр isGroup
         itemIdToDelete = id;
         const textEl = document.getElementById('delete-modal-text');
-        if (currentSection === 'events') textEl.innerText = 'Вы действительно хотите удалить этот спектакль?';
+
+        // Если удаляем группу
+        if (isGroup) {
+            textEl.innerText = 'Вы действительно хотите удалить эту команду?';
+        } 
+        // Если удаляем сотрудника (в разделе staff)
+        else if (currentSection === 'staff') {
+            textEl.innerText = 'Вы действительно хотите удалить сотрудника?';
+        }
+        // Остальные условия
+        else if (currentSection === 'events') textEl.innerText = 'Вы действительно хотите удалить этот спектакль?';
         else if (currentSection === 'tariffs') textEl.innerText = 'Вы действительно хотите удалить этот тариф?';
-        else if (currentSection === 'staff') textEl.innerText = 'Вы действительно хотите удалить сотрудника из базы?';
-        else if (currentSection === 'programs') textEl.innerText = 'Вы действительно хотите удалить программу из базы?';    
+        else if (currentSection === 'programs') textEl.innerText = 'Вы действительно хотите удалить программу из базы?';
         else textEl.innerText = 'Вы действительно хотите удалить эту запись? Действие нельзя будет отменить.';
 
         document.getElementById('delete-confirm-modal').style.display = 'flex';

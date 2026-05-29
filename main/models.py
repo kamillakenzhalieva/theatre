@@ -127,6 +127,14 @@ class Application(models.Model):
     guests_count = models.PositiveIntegerField(verbose_name="Кол-во гостей", default=1, blank=True, null=True)
     message = models.TextField(verbose_name="Комментарий", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    assigned_group = models.ForeignKey(
+        StaffGroup, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="Назначенная команда",
+        related_name='applications'
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Статус")
 
     def __str__(self):

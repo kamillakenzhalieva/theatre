@@ -258,7 +258,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         
-        # 1. Логика преобразования данных (твоя старая)
         cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
         raw_cat = data.get('category')
         if raw_cat in cat_map:
@@ -271,20 +270,15 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
             data['tariff'] = None
 
-        # 2. Очистка старых назначений перед созданием нового (ВАЖНО!)
-        # Используем transaction.atomic, чтобы удаление и создание прошли как одно действие
         app_id = data.get('application')
         event_id = data.get('event')
 
         with transaction.atomic():
             if app_id:
-                # Удаляем ВСЕ старые назначения для этой заявки
                 Assignment.objects.filter(application_id=app_id).delete()
             elif event_id:
-                # Удаляем ВСЕ старые назначения для этого спектакля
                 Assignment.objects.filter(event_id=event_id).delete()
 
-            # 3. Валидация и создание
             serializer = self.get_serializer(data=data)
             
             if not serializer.is_valid():

@@ -54,6 +54,9 @@ class Event(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
     image = models.ImageField(upload_to='events/', blank=True, null=True, verbose_name="Постер")
     is_active = models.BooleanField(default=True, verbose_name="Отображать")
+
+    ticket_link = models.URLField(max_length=500, blank=True, null=True, verbose_name="Ссылка на билеты")
+
     assigned_group = models.ForeignKey(
         StaffGroup, 
         on_delete=models.SET_NULL, 

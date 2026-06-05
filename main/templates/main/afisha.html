@@ -1,5 +1,6 @@
 {% extends 'main/base.html' %}
 {% load static %}
+{% load i18n %} 
 
 {% block content %}
 <div class="afisha-container">
@@ -24,7 +25,7 @@
 
             <div class="event-info">
                 <div class="event-meta">
-                    <span class="event-date"> {{ event.date|date:"d E, H:i" }}</span>
+                    <span class="event-date"> {% language 'ru' %}{{ event.date|date:"d E, H:i" }}{% endlanguage %}</span>
                     <span class="event-location"> {{ event.location }}</span>
                 </div>
                 

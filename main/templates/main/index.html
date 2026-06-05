@@ -1,9 +1,16 @@
 {% extends 'main/base.html' %}
 {% block content %}
 <div class="afisha-container" style="text-align: center;">
+    
+    {% if home.banner_image %}
+    <div style="margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <img src="{{ home.banner_image.url }}" alt="Баннер театра" style="width: 100%; max-height: 500px; object-fit: cover;">
+    </div>
+    {% endif %}
+
     <h1 class="page-title">{{ home.welcome_text|default:"Добро пожаловать!" }}</h1>
     
-    <p class="page-subtitle">{{ home.subtitle }}</p>
+    <p class="page-subtitle" style="white-space: pre-wrap;">{{ home.subtitle }}</p>
     
     <div style="margin-top: 30px;">
         <a href="{% url 'afisha' %}" class="btn-buy">Посмотреть афишу</a>

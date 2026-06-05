@@ -189,7 +189,7 @@ class Assignment(models.Model):
     def calculate_intervals(obj):
         if isinstance(obj, Application):
             if not obj.event_date or not obj.event_time:
-                return None, None
+                return None, None, None
             
             duration_minutes = 60
             if obj.category != 'spectacle' and obj.tariff and obj.tariff.duration:
@@ -202,37 +202,103 @@ class Assignment(models.Model):
             total_duration = duration_minutes + 60
             
             start_dt = datetime.combine(obj.event_date, obj.event_time)
-            if is_naive(start_dt): start_dt = make_aware(start_dt)
-            return start_dt, start_dt + timedelta(minutes=total_duration)
+            if is_naive(start_dt): 
+                start_dt = make_aware(start_dt)
+            return obj.event_date, start_dt, start_dt + timedelta(minutes=total_duration)
 
         elif isinstance(obj, Event):
-            if not obj.date: return None, None
-            start_dt = obj.date
-            if is_naive(start_dt): start_dt = make_aware(start_dt)
-            return start_dt, start_dt + timedelta(hours=2)
+            if not obj.date: 
+                return None, None, None
             
-        return None, None
+            start_dt = obj.date
+            if is_naive(start_dt): 
+                start_dt = make_aware(start_dt)
+            return obj.date.date(), start_dt, start_dt + timedelta(hours=2)
+            
+        return None, None, None
 
     def clean(self):
         super().clean()
-        current_obj = self.application if self.application else self.event
-        if not current_obj:
-            raise ValidationError("Не выбрано мероприятие!")
         
+        current_obj = None
+        if self.application_id:
+            current_obj = Application.objects.filter(id=self.application_id).first()
+        elif self.event_id:
+            current_obj = Event.objects.filter(id=self.event_id).first()
+
+        if not current_obj:
+            raise ValidationError("Не выбрано мероприятие для проверки времени!")
+
+        curr_date, curr_start, curr_end = self.calculate_intervals(current_obj)
+        if not curr_date or not curr_start: 
+            return
+
+        staff_ids_to_check = set()
         if self.staff_id:
-            curr_start, curr_end = self.calculate_intervals(current_obj)
-            if not curr_start: return
+            staff_ids_to_check.add(self.staff_id)
+            
+        total_group_members_count = 0
+        group_obj = None
+        
+        if self.group_id:
+            group_obj = StaffGroup.objects.filter(id=self.group_id).first()
+            if group_obj:
+                group_member_ids = list(group_obj.members.values_list('id', flat=True))
+                total_group_members_count = len(group_member_ids)
+                staff_ids_to_check.update(group_member_ids)
 
-            others = Assignment.objects.filter(
-                models.Q(staff_id=self.staff_id) | models.Q(group__members__id=self.staff_id)
-            ).exclude(pk=self.pk).distinct()
+        if not staff_ids_to_check:
+            return
 
-            for other in others:
-                other_obj = other.application if other.application else other.event
-                if not other_obj: continue
-                o_start, o_end = self.calculate_intervals(other_obj)
-                if o_start and o_end and (curr_start < o_end and curr_end > o_start):
-                    raise ValidationError(f"Сотрудник {self.staff.full_name} жестко занят на другом мероприятии!")
+        from django.db.models import Q
+        others = Assignment.objects.filter(
+            Q(staff_id__in=staff_ids_to_check) | Q(group__members__id__in=staff_ids_to_check)
+        ).distinct()
+
+        if self.pk:
+            others = others.exclude(pk=self.pk)
+        if self.application_id:
+            others = others.exclude(application_id=self.application_id)
+        if self.event_id:
+            others = others.exclude(event_id=self.event_id)
+
+        for other in others:
+            other_obj = other.application if other.application else other.event
+            if not other_obj: 
+                continue
+                
+            o_date, o_start, o_end = self.calculate_intervals(other_obj)
+            if not o_date or not o_start or not o_end:
+                continue
+
+            if curr_date != o_date:
+                continue
+
+            if curr_start < o_end and curr_end > o_start:
+                other_staff_ids = set()
+                if other.staff_id:
+                    other_staff_ids.add(other.staff_id)
+                if other.group_id:
+                    other_staff_ids.update(other.group.members.values_list('id', flat=True))
+                
+                busy_members = staff_ids_to_check.intersection(other_staff_ids)
+                
+                if busy_members:
+                    other_name = getattr(other_obj, 'full_name', None) or getattr(other_obj, 'title', 'Мероприятие')
+                    formatted_date = curr_date.strftime('%d.%m.%Y')
+                    time_str = o_end.strftime('%H:%M')
+                    
+                    if group_obj and len(busy_members) >= total_group_members_count:
+                        raise ValidationError(
+                            f"Конфликт! На {formatted_date} команда '{group_obj.name}' полностью занята на '{other_name}' до {time_str}."
+                        )
+                    names = list(Staff.objects.filter(id__in=busy_members).values_list('full_name', flat=True))
+                    busy_names_str = ", ".join(names)
+                    
+                    raise ValidationError(
+                        f"Конфликт времени! На {formatted_date} сотрудник(и) {busy_names_str} "
+                        f"уже занят(ы) на '{other_name}' до {time_str}."
+                    )
 
     def save(self, *args, **kwargs):
         self.full_clean()

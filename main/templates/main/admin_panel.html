@@ -257,10 +257,10 @@
             return;
         }
         
-        const id = fieldIdEl.value; // Теперь переменная id точно определена
+        const id = fieldIdEl.value;
         const area = document.getElementById('groups-list-area');
         
-        if (!area) return; // Проверка, что область для списка существует
+        if (!area) return;
         
         area.innerHTML = '<div style="padding:10px; font-size:12px; color:#999;">Проверка доступности команд...</div>';
 
@@ -306,7 +306,6 @@
                         }).join('\n');
                     }
                     
-                    // Восклицательный знак у названия, открывающий наше красивое окно
                     warningIcon = `<span class="conflict-exclamation" onclick="event.stopPropagation(); showErrorModal('${busyText}')" style="color:#ff4d4f; font-weight:bold; margin-left:8px; cursor:pointer; font-size:16px;" title="Посмотреть занятых сотрудников">❗</span>`;
                 }
                 
@@ -422,7 +421,7 @@
                 'Content-Type': 'application/json', 
                 'X-CSRFToken': djangoCsrfToken 
             },
-            body: JSON.stringify({ name: name, members: ids }) // Передаем название и массив ID
+            body: JSON.stringify({ name: name, members: ids })
         });
         if(r.ok) {
             const ng = await r.json();
@@ -498,7 +497,7 @@
                     </table>
                 </div>
             `;
-            // Загружаем данные
+
             const [sRes, gRes] = await Promise.all([fetch('/api/staff/'), fetch('/api/groups/')]);
             renderTable(await sRes.json());
             
@@ -516,8 +515,6 @@
             return;
         }
 
-        // 4. Рендер ВСЕХ остальных (Спектакли, Тарифы и т.д.)
-        // Создаем чистую структуру для стандартных разделов
         contentArea.innerHTML = `<table class="admin-table"><thead><tr id="table-head"></tr></thead><tbody id="table-body"></tbody></table>`;
         try {
             const response = await fetch(`/api/${section}/`);
@@ -528,26 +525,19 @@
         }
     }
 
-    // Открытие модалки для создания или редактирования
     async function openGroupModal(group = null) {
         const modal = document.getElementById('group-modal');
         const staffList = document.getElementById('group-staff-list');
-        
-        // Заголовок и поля
+
         document.getElementById('group-modal-title').innerText = group ? 'Редактирование команды' : 'Создание команды';
         document.getElementById('group-id').value = group ? group.id : '';
         document.getElementById('group-name-input').value = group ? group.name : '';
         
-        // Загружаем всех сотрудников
         const res = await fetch('/api/staff/');
         const staff = await res.json();
-        
-        // ИСПРАВЛЕНИЕ: здесь мы теперь просто берем массив чисел, 
-        // так как group.members — это массив [1, 2, ...]
         const selectedIds = (group && group.members) ? group.members.map(String) : [];
         
         staffList.innerHTML = staff.map(s => {
-            // Сравниваем ID сотрудника (строка) с массивом ID (строки)
             const isChecked = selectedIds.includes(String(s.id)) ? 'checked' : '';
             
             return `
@@ -561,7 +551,6 @@
         modal.style.display = 'flex';
     }
 
-    // Отправка в БД
     async function saveGroupToDB() {
         const id = document.getElementById('group-id').value;
         const name = document.getElementById('group-name-input').value;
@@ -578,19 +567,16 @@
         
         if (res.ok) {
             document.getElementById('group-modal').style.display = 'none';
-            loadSection('staff'); // Перезагружаем секцию
+            loadSection('staff');
         } else {
             alert('Ошибка при сохранении команды');
         }
     }
 
-    // Удаление
     async function deleteGroup(id) {
-    // Вызываем deleteItem, передавая флаг, что это группа
         deleteItem(id, true); 
     }
 
-    // Редактирование (подготовка)
     async function editGroup(id) {
         const res = await fetch(`/api/groups/${id}/`);
         const group = await res.json();
@@ -773,7 +759,6 @@
             ac.style.display = 'block';
             
             if (item.assigned_group) {
-                // Если команда назначена, сначала подтянем список всех групп, чтобы найти название
                 try {
                     const res = await fetch('/api/groups/');
                     const groups = await res.json();
@@ -781,7 +766,7 @@
                     
                     if (foundGroup) {
                         selectedTarget = { type: 'group', id: foundGroup.id };
-                        trigger.innerText = foundGroup.name; // Подставляем имя сразу
+                        trigger.innerText = foundGroup.name;
                     }
                 } catch (e) { console.error("Ошибка при поиске группы:", e); }
             }
@@ -824,55 +809,60 @@
 
     
     document.getElementById('admin-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const id = document.getElementById('field-id').value;
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const id = document.getElementById('field-id').value;
 
-    if (currentSection === 'staff') {
-        fd.delete('role'); fd.delete('roles');
-        document.querySelectorAll('input[name="staff_roles_array"]').forEach(input => {
-            const val = input.value.trim();
-            if (val) fd.append('roles', val);
-        });
-    }
+        if (currentSection === 'staff') {
+            fd.delete('role'); fd.delete('roles');
+            document.querySelectorAll('input[name="staff_roles_array"]').forEach(input => {
+                const val = input.value.trim();
+                if (val) fd.append('roles', val);
+            });
+        }
 
-    const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
-    const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': djangoCsrfToken }, body: fd });
+        if (selectedTarget && (currentSection === 'applications' || currentSection === 'events')) {
+            if (selectedTarget.is_busy === true || selectedTarget.has_busy_members === true || selectedTarget.classList?.contains('busy')) {
+                showWarningToast('Выбранная команда или сотрудник заняты на это время (учитывая буфер в 1 час)!');
+                return;
+            }
+        }
 
-    if (!r.ok) {
-        let errorMsg = 'Не удалось сохранить данные.';
-        try {
-            const errData = await r.json();
-            errorMsg = errData.detail || Object.values(errData).flat()[0] || errorMsg;
-        } catch (err) {}
-        showWarningToast(errorMsg);
-        return;
-    }
+        const u = id ? `/api/${currentSection}/${id}/` : `/api/${currentSection}/`, m = id ? 'PUT' : 'POST';
+        const r = await fetch(u, { method: m, headers: { 'X-CSRFToken': djangoCsrfToken }, body: fd });
 
-    const savedItem = await r.json();
-
-    if (selectedTarget && (currentSection === 'applications' || currentSection === 'events')) {
-        const targetIdKey = currentSection === 'events' ? 'event' : 'application';
-        const aData = { [targetIdKey]: id || savedItem.id, [selectedTarget.type]: selectedTarget.id };
-
-        const ar = await fetch('/api/assignments/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': djangoCsrfToken },
-            body: JSON.stringify(aData)
-        });
-
-        const resData = await ar.json();
-
-        if (!ar.ok || resData.status === 'warning') {
-            showWarningToast(resData.message || 'Ошибка назначения команды');
+        if (!r.ok) {
+            let errorMsg = 'Не удалось сохранить данные.';
+            try {
+                const errData = await r.json();
+                errorMsg = errData.detail || Object.values(errData).flat()[0] || errorMsg;
+            } catch (err) {}
+            showWarningToast(errorMsg);
             return;
         }
-    }
 
-    closeModal();
-    loadSection(currentSection);
-    showToast('Запись успешно сохранена');
-};
+        const savedItem = await r.json();
+
+        if (selectedTarget && (currentSection === 'applications' || currentSection === 'events')) {
+            const targetIdKey = currentSection === 'events' ? 'event' : 'application';
+            const aData = { [targetIdKey]: id || savedItem.id, [selectedTarget.type]: selectedTarget.id };
+
+            const ar = await fetch('/api/assignments/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': djangoCsrfToken },
+                body: JSON.stringify(aData)
+            });
+
+            if (!ar.ok) {
+                showWarningToast('Ошибка при финальном назначении команды');
+                return;
+            }
+        }
+
+        closeModal();
+        loadSection(currentSection);
+        showToast('Запись успешно сохранена');
+    };
 
     function triggerNotification(text, type = 'success') {
         const oldToast = document.querySelector('.dynamic-runtime-toast');
@@ -954,19 +944,15 @@
 
     let itemIdToDelete = null;
 
-    function deleteItem(id, isGroup = false) { // Добавили параметр isGroup
+    function deleteItem(id, isGroup = false) {
         itemIdToDelete = id;
         const textEl = document.getElementById('delete-modal-text');
-
-        // Если удаляем группу
         if (isGroup) {
             textEl.innerText = 'Вы действительно хотите удалить эту команду?';
         } 
-        // Если удаляем сотрудника (в разделе staff)
         else if (currentSection === 'staff') {
             textEl.innerText = 'Вы действительно хотите удалить сотрудника?';
         }
-        // Остальные условия
         else if (currentSection === 'events') textEl.innerText = 'Вы действительно хотите удалить этот спектакль?';
         else if (currentSection === 'tariffs') textEl.innerText = 'Вы действительно хотите удалить этот тариф?';
         else if (currentSection === 'programs') textEl.innerText = 'Вы действительно хотите удалить программу из базы?';
@@ -1005,11 +991,14 @@
     async function executeApprove() {
         const id = document.getElementById('field-id').value;
         if (!id) return;
-
+        const appData = { status: 'approved' };
+        if (selectedTarget && selectedTarget.type === 'group') {
+            appData.assigned_group = selectedTarget.id;
+        }
         const response = await fetch(`/api/applications/${id}/`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': djangoCsrfToken },
-            body: JSON.stringify({ status: 'approved' })
+            body: JSON.stringify(appData)
         });
 
         if (response.ok) {

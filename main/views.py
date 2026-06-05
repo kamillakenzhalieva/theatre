@@ -288,20 +288,33 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         
-        cat_map = {'День Рождения': 'birthday', 'Выпускной': 'graduation', 'Спектакль': 'spectacle'}
-        raw_cat = data.get('category')
-        if raw_cat in cat_map:
-            data['category'] = cat_map[raw_cat]
-
-        if data.get('category') == 'spectacle':
-            spec_name = data.get('tariff')
-            if spec_name:
-                old_msg = data.get('message', '')
-                data['message'] = f"Выбран спектакль: {spec_name}. {old_msg}"
-            data['tariff'] = None
-
         app_id = data.get('application')
         event_id = data.get('event')
+        staff_id = data.get('staff') or None
+        group_id = data.get('group') or None
+        
+        try:
+            assignment_instance = Assignment(
+                application_id=app_id,
+                event_id=event_id,
+                staff_id=staff_id,
+                group_id=group_id
+            )
+            assignment_instance.clean()
+        except ValidationError as e:
+            error_text = e.message if hasattr(e, 'message') else str(e.messages[0])
+            return Response({
+                'status': 'warning',
+                'message': error_text
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': 'warning',
+                'message': f"Системная ошибка проверки: {str(e)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.data.get('dry_run'):
+            return Response({"status": "available"}, status=status.HTTP_200_OK)
 
         with transaction.atomic():
             if app_id:
@@ -310,28 +323,9 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 Assignment.objects.filter(event_id=event_id).delete()
 
             serializer = self.get_serializer(data=data)
-            
-            if not serializer.is_valid():
-                error_msg = "У выбранной команды обнаружены накладки во времени."
-                if serializer.errors:
-                    raw_error = list(serializer.errors.values())[0]
-                    if isinstance(raw_error, list):
-                        error_msg = raw_error[0]
-                    elif isinstance(raw_error, dict):
-                        error_msg = list(raw_error.values())[0][0]
-                    else:
-                        error_msg = str(raw_error)
-                
-                error_msg = re.sub(r"ErrorDetail\(string='(.*?)', code='.*?'\)", r"\1", str(error_msg))
-                return Response({
-                    'status': 'warning',
-                    'message': error_msg
-                }, status=status.HTTP_200_OK)
-
-            if request.data.get('dry_run'):
-                return Response({"status": "available"}, status=status.HTTP_200_OK)
-                
+            serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class StaffGroupViewSet(viewsets.ModelViewSet):

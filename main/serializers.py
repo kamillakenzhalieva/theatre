@@ -37,6 +37,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
     chosen_show = serializers.StringRelatedField()
     chosen_program = serializers.StringRelatedField()
     assigned_target = serializers.SerializerMethodField()
+    assigned_group = serializers.PrimaryKeyRelatedField(
+        queryset=StaffGroup.objects.all(), 
+        required=False, 
+        allow_null=True
+    )
 
     class Meta:
         model = Application
@@ -47,7 +52,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'chosen_show', 'show_name',
             'chosen_program', 'program_name',
             'guests_count', 'message', 'status', 'created_at',
-            'assigned_target'
+            'assigned_target', 'assigned_group'
         ]
     
     def get_assigned_target(self, obj):
@@ -68,7 +73,7 @@ class StaffSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id', 'staff', 'application']
+        fields = ['id', 'staff', 'group', 'application', 'event']
 
     def calc_interval(self, target_app):
         dur = 60
@@ -98,11 +103,6 @@ class AssignmentSerializer(serializers.ModelSerializer):
             return data
 
         curr_start, curr_end = self.calc_interval(app)
-        
-        print(f"\n=== DEBUG ВАЛИДАЦИЯ ===")
-        print(f"Сотрудник: {staff.full_name}")
-        print(f"Проверяем заявку: {app.full_name}")
-        print(f"Интервал НОВОЙ: {curr_start} --- {curr_end}")
 
         existing = Assignment.objects.filter(staff=staff)
         if self.instance:
@@ -123,8 +123,6 @@ class AssignmentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f"Конфликт: {staff.full_name} уже занят на событии '{other_app.full_name}' до {o_end.strftime('%H:%M')}."
                 )
-
-        print("DEBUG: Конфликтов не найдено, сохраняем.\n")
         return data
     
 class StaffGroupSerializer(serializers.ModelSerializer):
